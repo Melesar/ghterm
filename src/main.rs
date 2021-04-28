@@ -14,7 +14,8 @@ use frontend::screen::{Rect, DrawableScreen};
 
 fn main() {
     let stdout = std::io::stdout();
-    let mut stdout = stdout.lock().into_raw_mode().unwrap();
+    let stdout = stdout.lock().into_raw_mode().unwrap();
+    let mut stdout = termion::screen::AlternateScreen::from(stdout);
 
     let stdin = std::io::stdin();
     
