@@ -19,9 +19,7 @@ fn main() {
 
     let stdin = std::io::stdin();
     
-    write!(stdout, "{}{}",
-           termion::clear::All,
-           termion::cursor::Hide).unwrap(); 
+    write!(stdout, "{}", termion::cursor::Hide).unwrap(); 
 
     let size = termion::terminal_size().unwrap();
     let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
@@ -36,5 +34,5 @@ fn main() {
         }
     }
 
-    write!(stdout, "{}{}{}", termion::cursor::Restore, termion::cursor::Show, termion::clear::All).unwrap();
+    write!(stdout, "{}", termion::cursor::Show).unwrap();
 }
