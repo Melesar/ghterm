@@ -8,30 +8,50 @@ pub struct Rect {
     pub h: u16,
 }
 
-pub fn draw_screen<W: Write>  (buffer: &mut W, rect: Rect, contents: &str) {
-    write!(buffer, "{}", termion::cursor::Goto(1,1)).unwrap();
-    for row in 0..rect.h {
-        for column in 0..rect.w {
-            if row == 0 && column == 0 {
-                write!(buffer, "┏").unwrap();
-            } else if row == 0 && column == rect.w - 1 {
-                write!(buffer, "┓").unwrap();
-            } else if column == 0 && row == rect.h - 1 {
-                write!(buffer, "┗").unwrap();
-            } else if column == rect.w - 1 && row == rect.h - 1 {
-                write!(buffer, "┛").unwrap();
-            } else if row == 0 || row == rect.h - 1  {
-                write!(buffer, "━").unwrap();
-            } else if  column == 0 || column == rect.w - 1 {
-                write!(buffer, "┃").unwrap();
-            } else { 
-                write!(buffer, " ").unwrap();
+pub trait DrawableScreen {
+    fn draw<W: Write>(buffer: &mut W, rect: Rect);
+}
+
+pub struct Screen {
+    rect: Rect,
+}
+
+impl Screen {
+    pub fn new(rect: Rect) -> Screen {
+        Screen { rect }
+    }
+
+    pub fn draw_border<W: Write>(&self, buffer: &mut W) {
+        let x = self.rect.x + 1;
+        let y = self.rect.y + 1;
+        write!(buffer, "{}", termion::cursor::Goto(x,y)).unwrap();
+        for row in 0..self.rect.h {
+            for column in 0..self.rect.w {
+                if row == 0 && column == 0 {
+                    write!(buffer, "┏").unwrap();
+                } else if row == 0 && column == self.rect.w - 1 {
+                    write!(buffer, "┓").unwrap();
+                } else if column == 0 && row == self.rect.h - 1 {
+                    write!(buffer, "┗").unwrap();
+                } else if column == self.rect.w - 1 && row == self.rect.h - 1 {
+                    write!(buffer, "┛").unwrap();
+                } else if row == 0 || row == self.rect.h - 1  {
+                    write!(buffer, "━").unwrap();
+                } else if  column == 0 || column == self.rect.w - 1 {
+                    write!(buffer, "┃").unwrap();
+                } else { 
+                    write!(buffer, " ").unwrap();
+                }
             }
         }
     }
 
-    write!(buffer, "{}Hello!{}", 
-           termion::cursor::Goto(2,2),
-           termion::cursor::Goto(rect.w, rect.h))
-       .unwrap();
+    pub fn get_content_rect(&self) -> Rect {
+        Rect {
+            x: self.rect.x + 1,
+            y: self.rect.y + 1,
+            w: self.rect.w - 1,
+            h: self.rect.h - 1,
+        }
+    }
 }
