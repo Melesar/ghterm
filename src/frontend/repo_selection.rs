@@ -1,9 +1,13 @@
 use std::io::Write;
+use std::sync::mpsc;
+
 use super::screen::*;
+
 use crate::backend;
+use crate::app::events::AppEvent;
 
 pub struct RepoSelectionScreen {
-
+    event_sender: mpsc::Sender<AppEvent>,
 }
 
 impl<W: Write> ApplicationScreen<W> for RepoSelectionScreen {
