@@ -17,6 +17,20 @@ pub fn pr_list() -> Result<JsonValue, Error> {
               }")
 }
 
+pub fn pr_view(number: u32) -> Result<JsonValue, Error> {
+    gh_qraphql(&format!("query($name: String!, $owner: String!) {{
+                    repository(owner: $owner name: $name) {{
+                        pullRequest(number: {}) {{
+                            number
+                            title
+                            baseRefName
+                            headRefName
+                            body
+                        }}
+                    }}
+                }}", number))
+}
+
 fn gh_qraphql(graphql_query: &str) -> Result<JsonValue, Error> {
     let output = Command::new("gh")
         .args(&["api", "graphql"])
