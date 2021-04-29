@@ -8,8 +8,22 @@ pub struct Rect {
     pub h: u16,
 }
 
-pub trait DrawableScreen {
-    fn draw<W: Write>(buffer: &mut W, rect: Rect);
+#[derive(Hash, Eq, PartialEq)]
+pub enum ScreenType {
+    RepoSelection,
+}
+
+pub trait DrawableScreen <W: Write>{
+    fn draw (&self, buffer: &mut W, rect: Rect);
+}
+
+pub trait InteractableScreen {
+    fn validate_input(&self) -> bool;
+    fn process_input(&mut self);
+}
+
+pub trait ApplicationScreen<W: Write> : DrawableScreen<W> + InteractableScreen { 
+    fn screen_type(&self) -> ScreenType;
 }
 
 pub struct Screen {

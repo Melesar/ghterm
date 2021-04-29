@@ -1,38 +1,16 @@
-use termion::event::Key;
-use termion::raw::IntoRawMode;
-use termion::input::TermRead;
-use std::io::Write;
-
 mod backend; 
 mod frontend;
+mod app;
 
-pub use backend::pr::PR;
-pub use backend::gh;
-pub use frontend::repo_selection::RepoSelectionScreen;
+use app::App;
+use termion::raw::IntoRawMode;
 
-use frontend::screen::{Rect, DrawableScreen};
-
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let stdout = std::io::stdout();
     let stdout = stdout.lock().into_raw_mode().unwrap();
-    let mut stdout = termion::screen::AlternateScreen::from(stdout);
+    let stdout = termion::screen::AlternateScreen::from(stdout);
 
-    let stdin = std::io::stdin();
-    
-    write!(stdout, "{}", termion::cursor::Hide).unwrap(); 
-
-    let size = termion::terminal_size().unwrap();
-    let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
-
-    RepoSelectionScreen::draw(&mut stdout, rect);
-    stdout.flush().unwrap();
-    
-    for key in stdin.keys() {
-        match key.unwrap() {
-            Key::Char('q') => break,
-            _ => continue,
-        }
-    }
-
-    write!(stdout, "{}", termion::cursor::Show).unwrap();
+    let stdin = termion::async_stdin();
+    let app = App::new(stdout, stdin);
+    app.run()
 }
