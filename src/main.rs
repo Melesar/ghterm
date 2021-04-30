@@ -1,6 +1,7 @@
 mod backend; 
 mod frontend;
 mod app;
+mod test;
 
 use app::App;
 use termion::raw::IntoRawMode;
