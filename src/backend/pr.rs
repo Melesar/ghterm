@@ -50,6 +50,10 @@ pub fn fetch_pr(number: u32) -> Result<Pr, Error> {
     Ok (Pr{info: Some(pr_info)})
 }
 
+pub fn get_pr_comments(number: u32) -> Vec<String> {
+    vec![]
+}
+
 impl PrsList {
     fn fetch_prs () -> Self {
         PrsList{prs: None}
