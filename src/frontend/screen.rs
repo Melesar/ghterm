@@ -18,8 +18,8 @@ pub trait DrawableScreen <W: Write>{
 }
 
 pub trait InteractableScreen {
-    fn validate_input(&self) -> bool;
-    fn process_input(&mut self);
+    fn validate_input(&self, input: u8) -> bool;
+    fn process_input(&mut self, input: u8);
 }
 
 pub trait ApplicationScreen<W: Write> : DrawableScreen<W> + InteractableScreen { 

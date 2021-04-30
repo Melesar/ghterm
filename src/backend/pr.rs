@@ -7,6 +7,10 @@ pub struct PrHeader {
     pub title: String,
 }
 
+pub struct PrsList {
+    prs: Option<Vec<PrHeader>>,
+}
+
 pub struct Pr {
     pub info: Option<PrInfo>,
 } 
@@ -46,3 +50,12 @@ pub fn fetch_pr(number: u32) -> Result<Pr, Error> {
     Ok (Pr{info: Some(pr_info)})
 }
 
+impl PrsList {
+    fn fetch_prs () -> Self {
+        PrsList{prs: None}
+    } 
+
+    pub fn get (&self) -> &Option<Vec<PrHeader>> {
+        &self.prs
+    }
+}
