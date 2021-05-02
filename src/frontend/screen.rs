@@ -26,6 +26,10 @@ pub trait ApplicationScreen<W: Write> : DrawableScreen<W> + InteractableScreen {
     fn screen_type(&self) -> ScreenType;
 }
 
+pub trait ScreenHandler<'a, W: Write> : InteractableScreen {
+    fn update (&mut self, application_rect: Rect);
+}
+
 pub struct Screen {
     rect: Rect,
 }

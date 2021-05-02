@@ -2,13 +2,16 @@ pub mod events;
 
 use std::io::{Write, Read};
 use std::sync::mpsc;
+use std::rc::Rc;
 
 use crate::frontend::screen::*;
 use crate::frontend::repo_selection::RepoSelectionScreen;
+use crate::frontend::repo_selection_handler::RepoSelectionHandler;
+use crate::backend::pr::*;
 
 use events::AppEvent;
 
-pub struct App<R: Read, W: Write>  {
+pub struct App< R: Read, W: Write>  {
     buff_out: W,
     buff_in: R,
     event_listener: mpsc::Receiver<AppEvent>,
@@ -28,25 +31,25 @@ impl<R: Read, W: Write> App<R, W> {
         let size = termion::terminal_size().unwrap();
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
-        let mut current_screen : &mut dyn ApplicationScreen<W> = &mut RepoSelectionScreen::new(self.sender.clone());
-        current_screen.draw(&mut self.buff_out, rect);
+        let mut current_screen_handler = Box::new(RepoSelectionHandler::new(&mut self.buff_out, self.sender.clone()));
 
-        self.buff_out.flush().unwrap();
-        
         let mut input = self.buff_in.bytes();
         loop {
             match input.next() {
                 Some(Ok(b'q')) => break,
                 Some(Ok(input)) => {
-                    if current_screen.validate_input(input) {
-                        current_screen.process_input(input);
+                    if current_screen_handler.validate_input(input) {
+                        current_screen_handler.process_input(input);
                     }
                 },
-                _ => break,
+                _ => (),
             }
+
+            current_screen_handler.update(rect);
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
+                    //Switch to the main screen
                     AppEvent::RepoChosen(number) => break,
                 }
             }

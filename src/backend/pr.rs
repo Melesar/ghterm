@@ -1,14 +1,12 @@
 use super::gh;
+use std::sync::mpsc;
 use std::io::Error;
+use std::thread;
 
 #[derive(Debug)]
 pub struct PrHeader {
     pub number: u32,
     pub title: String,
-}
-
-pub struct PrsList {
-    prs: Option<Vec<PrHeader>>,
 }
 
 pub struct Pr {
@@ -48,14 +46,4 @@ pub fn fetch_pr(number: u32) -> Result<Pr, Error> {
         body: output["body"].as_str().unwrap().to_string(),
     };
     Ok (Pr{info: Some(pr_info)})
-}
-
-impl PrsList {
-    fn fetch_prs () -> Self {
-        PrsList{prs: None}
-    } 
-
-    pub fn get (&self) -> &Option<Vec<PrHeader>> {
-        &self.prs
-    }
 }
