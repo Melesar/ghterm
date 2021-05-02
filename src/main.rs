@@ -1,6 +1,7 @@
 mod backend; 
 mod frontend;
 mod app;
+mod logs;
 
 use app::App;
 use termion::raw::IntoRawMode;
@@ -12,5 +13,7 @@ fn main() -> Result<(), std::io::Error> {
 
     let stdin = termion::async_stdin();
     let app = App::new(stdout, stdin);
-    app.run()
+    let result = app.run();
+    logs::clear_logs();
+    result
 }
