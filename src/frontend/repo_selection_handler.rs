@@ -1,8 +1,7 @@
 use crate::app::events::AppEvent;
 use crate::backend::pr::{self, PrHeader};
-use crate::logs;
 
-use super::screen::{DrawableScreen, InteractableScreen, Rect, ScreenHandler};
+use super::screen::{ApplicationScreen, DrawableScreen, InteractableScreen, Rect, ScreenHandler};
 use super::repo_selection::RepoSelectionScreen;
 
 use std::sync::mpsc;
@@ -10,16 +9,14 @@ use std::io::Write;
 use std::thread;
 
 
-pub struct RepoSelectionHandler<'a, W: Write> {
-    buffer: &'a mut W,
+pub struct RepoSelectionHandler {
     screen: RepoSelectionScreen,
     event_sender: mpsc::Sender<AppEvent>,
     repo_list_receiver: mpsc::Receiver<std::io::Result<Vec<PrHeader>>>,
-    is_dirty: bool,
 }
 
-impl<'a, W: Write> RepoSelectionHandler<'a, W> { 
-    pub fn new (buffer: &'a mut W, event_sender: mpsc::Sender<AppEvent>) -> Self {
+impl RepoSelectionHandler { 
+    pub fn new (event_sender: mpsc::Sender<AppEvent>) -> Self {
         let (repo_list_sender, repo_list_receiver) = mpsc::channel::<std::io::Result<Vec<PrHeader>>>();
         thread::spawn(move || {
             let prs = pr::list_prs();
@@ -27,22 +24,16 @@ impl<'a, W: Write> RepoSelectionHandler<'a, W> {
         });
 
         let screen = RepoSelectionScreen::new(event_sender.clone());
-        RepoSelectionHandler {buffer, screen, event_sender, repo_list_receiver, is_dirty: true}
+        RepoSelectionHandler {screen, event_sender, repo_list_receiver}
     }
 }
 
-impl<'a, W: Write> ScreenHandler<'a, W> for RepoSelectionHandler<'a, W> {
-    fn update(&mut self, application_rect: Rect, force: bool) {
-        if self.is_dirty || force {
-            self.screen.draw(self.buffer, application_rect);
-            self.is_dirty = false;
-        }
-
+impl ScreenHandler for RepoSelectionHandler {
+    fn update(&mut self) {
         match self.repo_list_receiver.try_recv().ok() {
             Some(ok) => match ok {
                 Ok(prs) => {
                     self.screen.set_pr_list(prs);
-                    self.is_dirty = true;
                 },
                 Err(error) => {
                     self.event_sender.send(AppEvent::Error(error.to_string())).unwrap();
@@ -53,12 +44,21 @@ impl<'a, W: Write> ScreenHandler<'a, W> for RepoSelectionHandler<'a, W> {
     }
 }
 
-impl<'a, W: Write> InteractableScreen for RepoSelectionHandler<'a, W> {
+impl InteractableScreen for RepoSelectionHandler {
     fn validate_input(&self, b: u8) -> bool {
         self.screen.validate_input(b)
     }
 
-    fn process_input(&mut self, b: u8) -> bool {
-        self.screen.process_input(b)
+    fn process_input(&mut self, b: u8) {
+        self.screen.process_input(b);
     }
+}
+
+impl DrawableScreen for RepoSelectionHandler {
+    fn draw<W: Write> (&self, buffer: &mut W, rect: Rect) {
+        self.screen.draw(buffer, rect);
+    }
+}
+
+impl ApplicationScreen for RepoSelectionHandler {
 }

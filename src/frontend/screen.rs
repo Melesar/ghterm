@@ -13,26 +13,20 @@ pub enum ScreenType {
     RepoSelection,
 }
 
-pub trait DrawableScreen <W: Write>{
-    fn draw (&self, buffer: &mut W, rect: Rect);
+pub trait DrawableScreen {
+    fn draw<W: Write>(&self, buffer: &mut W, rect: Rect);
 }
 
 pub trait InteractableScreen {
     fn validate_input(&self, input: u8) -> bool;
-
-
-    /// This function should return true if as a result of 
-    /// input processing the screen needs to be updated. Otherwise
-    /// it should return false
-    fn process_input(&mut self, input: u8) -> bool;
+    fn process_input(&mut self, input: u8);
 }
 
-pub trait ApplicationScreen<W: Write> : DrawableScreen<W> + InteractableScreen { 
-    fn screen_type(&self) -> ScreenType;
+pub trait ApplicationScreen : DrawableScreen + InteractableScreen { 
 }
 
-pub trait ScreenHandler<'a, W: Write> : InteractableScreen {
-    fn update (&mut self, application_rect: Rect, force: bool);
+pub trait ScreenHandler : ApplicationScreen {
+    fn update (&mut self);
 }
 
 pub struct Screen {

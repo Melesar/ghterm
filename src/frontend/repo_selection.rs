@@ -1,6 +1,5 @@
 use std::io::Write;
 use std::sync::mpsc;
-use std::rc::Rc;
 
 use super::screen::*;
 
@@ -20,6 +19,7 @@ impl RepoSelectionScreen {
 
     pub fn set_pr_list(&mut self, prs: Vec<PrHeader>) {
         self.prs = Some(prs);
+        self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
     }
 
     fn update_selection(&mut self, delta: i32) {
@@ -45,19 +45,13 @@ impl RepoSelectionScreen {
             current_index
         };
         self.selected_index = current_index as u32;
+        self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
     }
 }
 
-impl<W: Write> ApplicationScreen<W> for RepoSelectionScreen {
-    
-    fn screen_type(&self) -> ScreenType {
-        ScreenType::RepoSelection
-    }
-}
+impl DrawableScreen for  RepoSelectionScreen {
 
-impl<W: Write> DrawableScreen<W> for  RepoSelectionScreen {
-
-    fn draw (&self, stdout: &mut W, rect: Rect) {
+    fn draw <W: Write>(&self, stdout: &mut W, rect: Rect) {
         crate::logs::log(&format!("Drawing repo selection screen"));
         let screen = Screen::new(rect);
         screen.draw_border(stdout);
@@ -106,21 +100,12 @@ impl InteractableScreen for RepoSelectionScreen {
         }
     }
 
-    fn process_input(&mut self, input: u8) -> bool {
+    fn process_input(&mut self, input: u8) {
         match input {
-            b'j' => {
-                self.update_selection(1);
-                return true;
-            },
-            b'k' => { 
-                self.update_selection(-1);
-                return true;
-            },
-            13 => {
-                self.event_sender.send(AppEvent::RepoChosen(self.selected_index)).unwrap();
-                return false;
-            }
-            _ => false,
+            b'j' => self.update_selection(1), 
+            b'k' => self.update_selection(-1),
+            13 => self.event_sender.send(AppEvent::RepoChosen(self.selected_index)).unwrap(),
+            _ => (),
         }
     }
 

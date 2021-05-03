@@ -28,15 +28,15 @@ impl<R: Read, W: Write> App<R, W> {
         let size = termion::terminal_size().unwrap();
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
-        let mut current_screen_handler = Box::new(RepoSelectionHandler::new(&mut self.buff_out, self.sender.clone()));
+        let mut current_screen_handler = Box::new(RepoSelectionHandler::new(self.sender.clone()));
+        self.sender.send(AppEvent::ScreenRepaint).unwrap();
 
         let mut input = self.buff_in.bytes();
         loop {
             match input.next() {
                 Some(Ok(input)) => {
-                    if current_screen_handler.validate_input(input) &&
-                       current_screen_handler.process_input(input) {
-                        current_screen_handler.update(rect, true);
+                    if current_screen_handler.validate_input(input) {
+                       current_screen_handler.process_input(input);
                     } else {
                         match input {
                             b'q' => break,
@@ -47,12 +47,13 @@ impl<R: Read, W: Write> App<R, W> {
                 _ => (),
             }
 
-            current_screen_handler.update(rect, false);
+            current_screen_handler.update();
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
                     AppEvent::RepoChosen(number) =>crate::logs::log(&format!("Selected repo {}", number)) , //TODO switch to the main screen
                     AppEvent::Error(message) => crate::logs::log(&format!("ERROR: {}", message)), //TODO handle the error
+                    AppEvent::ScreenRepaint => current_screen_handler.draw(&mut self.buff_out, rect),
                 }
             }
         }
