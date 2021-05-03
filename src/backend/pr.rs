@@ -1,7 +1,5 @@
 use super::gh;
-use std::sync::mpsc;
 use std::io::Error;
-use std::thread;
 
 #[derive(Debug)]
 pub struct PrHeader {
@@ -10,7 +8,7 @@ pub struct PrHeader {
 }
 
 pub struct Pr {
-    pub info: Option<PrInfo>,
+    pub info: PrInfo,
 } 
 
 #[derive(Debug)]
@@ -45,5 +43,5 @@ pub fn fetch_pr(number: u32) -> Result<Pr, Error> {
         head_branch: output["headRefName"].as_str().unwrap().to_string(),
         body: output["body"].as_str().unwrap().to_string(),
     };
-    Ok (Pr{info: Some(pr_info)})
+    Ok (Pr{info: pr_info})
 }

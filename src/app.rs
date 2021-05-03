@@ -5,6 +5,7 @@ use std::sync::mpsc;
 
 use crate::frontend::screen::*;
 use crate::frontend::repo_selection_handler::RepoSelectionHandler;
+use crate::frontend::main_screen_handler::MainScreenHandler;
 
 use events::AppEvent;
 
@@ -28,7 +29,7 @@ impl<R: Read, W: Write> App<R, W> {
         let size = termion::terminal_size().unwrap();
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
-        let mut current_screen_handler = Box::new(RepoSelectionHandler::new(self.sender.clone()));
+        let mut current_screen_handler : Box<dyn ScreenHandler<W>> = Box::new(RepoSelectionHandler::new(self.sender.clone()));
         self.sender.send(AppEvent::ScreenRepaint).unwrap();
 
         let mut input = self.buff_in.bytes();
@@ -51,7 +52,10 @@ impl<R: Read, W: Write> App<R, W> {
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
-                    AppEvent::RepoChosen(number) =>crate::logs::log(&format!("Selected repo {}", number)) , //TODO switch to the main screen
+                    AppEvent::RepoChosen(number) => {
+                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone()));
+                        self.sender.send(AppEvent::ScreenRepaint).unwrap();
+                    },
                     AppEvent::Error(message) => crate::logs::log(&format!("ERROR: {}", message)), //TODO handle the error
                     AppEvent::ScreenRepaint => current_screen_handler.draw(&mut self.buff_out, rect),
                 }

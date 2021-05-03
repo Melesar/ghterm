@@ -8,13 +8,8 @@ pub struct Rect {
     pub h: u16,
 }
 
-#[derive(Hash, Eq, PartialEq)]
-pub enum ScreenType {
-    RepoSelection,
-}
-
-pub trait DrawableScreen {
-    fn draw<W: Write>(&self, buffer: &mut W, rect: Rect);
+pub trait DrawableScreen <W: Write> {
+    fn draw(&self, buffer: &mut W, rect: Rect);
 }
 
 pub trait InteractableScreen {
@@ -22,10 +17,10 @@ pub trait InteractableScreen {
     fn process_input(&mut self, input: u8);
 }
 
-pub trait ApplicationScreen : DrawableScreen + InteractableScreen { 
+pub trait ApplicationScreen <W: Write>: DrawableScreen<W> + InteractableScreen { 
 }
 
-pub trait ScreenHandler : ApplicationScreen {
+pub trait ScreenHandler <W: Write> : ApplicationScreen<W> {
     fn update (&mut self);
 }
 
