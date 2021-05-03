@@ -19,7 +19,12 @@ pub trait DrawableScreen <W: Write>{
 
 pub trait InteractableScreen {
     fn validate_input(&self, input: u8) -> bool;
-    fn process_input(&mut self, input: u8);
+
+
+    /// This function should return true if as a result of 
+    /// input processing the screen needs to be updated. Otherwise
+    /// it should return false
+    fn process_input(&mut self, input: u8) -> bool;
 }
 
 pub trait ApplicationScreen<W: Write> : DrawableScreen<W> + InteractableScreen { 

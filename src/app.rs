@@ -2,12 +2,9 @@ pub mod events;
 
 use std::io::{Write, Read};
 use std::sync::mpsc;
-use std::rc::Rc;
 
 use crate::frontend::screen::*;
-use crate::frontend::repo_selection::RepoSelectionScreen;
 use crate::frontend::repo_selection_handler::RepoSelectionHandler;
-use crate::backend::pr::*;
 
 use events::AppEvent;
 
@@ -36,10 +33,14 @@ impl<R: Read, W: Write> App<R, W> {
         let mut input = self.buff_in.bytes();
         loop {
             match input.next() {
-                Some(Ok(b'q')) => break,
                 Some(Ok(input)) => {
                     if current_screen_handler.validate_input(input) {
                         current_screen_handler.process_input(input);
+                    } else {
+                        match input {
+                            b'q' => break,
+                            _ => (),
+                        }
                     }
                 },
                 _ => (),
@@ -49,8 +50,8 @@ impl<R: Read, W: Write> App<R, W> {
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
-                    //Switch to the main screen
-                    AppEvent::RepoChosen(number) => break,
+                    AppEvent::RepoChosen(number) => break, //TODO switch to the main screen
+                    AppEvent::Error(message) => break, //TODO handle the error
                 }
             }
         }

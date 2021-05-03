@@ -13,6 +13,7 @@ use std::thread;
 pub struct RepoSelectionHandler<'a, W: Write> {
     buffer: &'a mut W,
     screen: RepoSelectionScreen,
+    event_sender: mpsc::Sender<AppEvent>,
     repo_list_receiver: mpsc::Receiver<std::io::Result<Vec<PrHeader>>>,
     is_dirty: bool,
 }
@@ -25,8 +26,8 @@ impl<'a, W: Write> RepoSelectionHandler<'a, W> {
             repo_list_sender.send(prs).unwrap();
         });
 
-        let screen = RepoSelectionScreen::new(event_sender);
-        RepoSelectionHandler {buffer, screen, repo_list_receiver, is_dirty: true}
+        let screen = RepoSelectionScreen::new(event_sender.clone());
+        RepoSelectionHandler {buffer, screen, event_sender, repo_list_receiver, is_dirty: true}
     }
 }
 
@@ -37,11 +38,17 @@ impl<'a, W: Write> ScreenHandler<'a, W> for RepoSelectionHandler<'a, W> {
             self.is_dirty = false;
         }
 
-        //TODO implement error handling
-        if let Ok(Ok(prs)) = self.repo_list_receiver.try_recv() {
-            crate::logs::log(&format!("Received {} prs", prs.len()));
-            self.screen.set_pr_list(prs);
-            self.is_dirty = true;
+        match self.repo_list_receiver.try_recv().ok() {
+            Some(ok) => match ok {
+                Ok(prs) => {
+                    self.screen.set_pr_list(prs);
+                    self.is_dirty = true;
+                },
+                Err(error) => {
+                    self.event_sender.send(AppEvent::Error(error.to_string())).unwrap();
+                }
+            }
+            None => (),
         }
     }
 }
@@ -51,7 +58,7 @@ impl<'a, W: Write> InteractableScreen for RepoSelectionHandler<'a, W> {
         self.screen.validate_input(b)
     }
 
-    fn process_input(&mut self, b: u8) {
-        self.screen.process_input(b);
+    fn process_input(&mut self, b: u8) -> bool {
+        self.screen.process_input(b)
     }
 }

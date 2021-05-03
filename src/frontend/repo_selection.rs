@@ -61,14 +61,21 @@ impl InteractableScreen for RepoSelectionScreen {
         }
     }
 
-    fn process_input(&mut self, input: u8) {
+    fn process_input(&mut self, input: u8) -> bool {
         match input {
             b'j' => {
-                self.selected_index += 1
+                self.selected_index += 1;
+                return true;
             },
-            b'k' => self.selected_index -= 1,
-            13 => self.event_sender.send(AppEvent::RepoChosen(self.selected_index)).unwrap(),
-            _ => (),
+            b'k' => { 
+                self.selected_index -= 1;
+                return true;
+            },
+            13 => {
+                self.event_sender.send(AppEvent::RepoChosen(self.selected_index)).unwrap();
+                return false;
+            }
+            _ => false,
         }
     }
 }
