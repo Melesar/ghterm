@@ -53,6 +53,7 @@ impl<R: Read, W: Write> App<R, W> {
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
                     AppEvent::RepoChosen(number) => {
+                        write!(self.buff_out, "{}", termion::clear::All).unwrap(); 
                         current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone()));
                         self.sender.send(AppEvent::ScreenRepaint).unwrap();
                     },
