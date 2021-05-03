@@ -34,8 +34,9 @@ impl<R: Read, W: Write> App<R, W> {
         loop {
             match input.next() {
                 Some(Ok(input)) => {
-                    if current_screen_handler.validate_input(input) {
-                        current_screen_handler.process_input(input);
+                    if current_screen_handler.validate_input(input) &&
+                       current_screen_handler.process_input(input) {
+                        current_screen_handler.update(rect, true);
                     } else {
                         match input {
                             b'q' => break,
@@ -46,12 +47,12 @@ impl<R: Read, W: Write> App<R, W> {
                 _ => (),
             }
 
-            current_screen_handler.update(rect);
+            current_screen_handler.update(rect, false);
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
-                    AppEvent::RepoChosen(number) => break, //TODO switch to the main screen
-                    AppEvent::Error(message) => break, //TODO handle the error
+                    AppEvent::RepoChosen(number) =>crate::logs::log(&format!("Selected repo {}", number)) , //TODO switch to the main screen
+                    AppEvent::Error(message) => crate::logs::log(&format!("ERROR: {}", message)), //TODO handle the error
                 }
             }
         }

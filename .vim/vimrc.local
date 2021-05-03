@@ -1,0 +1,1 @@
+nnoremap <leader>l icrate::logs::log(&format!(""))<ESC>F"i

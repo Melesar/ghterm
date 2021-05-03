@@ -32,7 +32,7 @@ pub trait ApplicationScreen<W: Write> : DrawableScreen<W> + InteractableScreen {
 }
 
 pub trait ScreenHandler<'a, W: Write> : InteractableScreen {
-    fn update (&mut self, application_rect: Rect);
+    fn update (&mut self, application_rect: Rect, force: bool);
 }
 
 pub struct Screen {

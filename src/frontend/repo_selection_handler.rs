@@ -32,8 +32,8 @@ impl<'a, W: Write> RepoSelectionHandler<'a, W> {
 }
 
 impl<'a, W: Write> ScreenHandler<'a, W> for RepoSelectionHandler<'a, W> {
-    fn update(&mut self, application_rect: Rect) {
-        if self.is_dirty {
+    fn update(&mut self, application_rect: Rect, force: bool) {
+        if self.is_dirty || force {
             self.screen.draw(self.buffer, application_rect);
             self.is_dirty = false;
         }
