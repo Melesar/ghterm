@@ -1,22 +1,20 @@
 use std::io::Write;
 use std::sync::mpsc;
-use std::marker::PhantomData;
 
 use super::screen::*;
 
 use crate::backend::pr::PrHeader;
 use crate::app::events::AppEvent;
 
-pub struct RepoSelectionScreen <W: Write> {
+pub struct RepoSelectionScreen  {
     event_sender: mpsc::Sender<AppEvent>,
     prs: Option<Vec<PrHeader>>,
     selected_index: u32,
-    _marker: PhantomData<W>,
 }
 
-impl <W: Write> RepoSelectionScreen <W> {
+impl RepoSelectionScreen {
     pub fn new(event_sender: mpsc::Sender<AppEvent>) -> Self {
-        RepoSelectionScreen {event_sender, prs: None, selected_index: 0, _marker: PhantomData}
+        RepoSelectionScreen { event_sender, prs: None, selected_index: 0 }
     }
 
     pub fn set_pr_list(&mut self, prs: Vec<PrHeader>) {
@@ -51,9 +49,9 @@ impl <W: Write> RepoSelectionScreen <W> {
     }
 }
 
-impl <W: Write> DrawableScreen <W> for  RepoSelectionScreen <W> {
+impl DrawableScreen for RepoSelectionScreen  {
 
-    fn draw (&self, stdout: &mut W, rect: Rect) {
+    fn draw (&self, stdout: &mut dyn Write, rect: Rect) {
         let screen = Screen::new(rect);
         screen.draw_border(stdout);
         if let Some(prs) = self.prs.as_ref() {
@@ -89,7 +87,7 @@ impl <W: Write> DrawableScreen <W> for  RepoSelectionScreen <W> {
     }
 }
 
-impl <W: Write> InteractableScreen  for RepoSelectionScreen <W> {
+impl InteractableScreen for RepoSelectionScreen {
     fn validate_input(&self, input: u8) -> bool {
         if self.prs.is_none() {
             return false;

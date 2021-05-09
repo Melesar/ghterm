@@ -7,16 +7,14 @@ use super::repo_selection::RepoSelectionScreen;
 use std::sync::mpsc;
 use std::io::Write;
 use std::thread;
-use std::marker::PhantomData;
 
-pub struct  RepoSelectionHandler <W: Write> {
-    screen: RepoSelectionScreen<W>,
+pub struct  RepoSelectionHandler {
+    screen: RepoSelectionScreen,
     event_sender: mpsc::Sender<AppEvent>,
     repo_list_receiver: mpsc::Receiver<std::io::Result<Vec<PrHeader>>>,
-    _marker: PhantomData<W>,
 }
 
-impl<W: Write> RepoSelectionHandler <W> { 
+impl RepoSelectionHandler { 
     pub fn new (event_sender: mpsc::Sender<AppEvent>) -> Self {
         let (repo_list_sender, repo_list_receiver) = mpsc::channel::<std::io::Result<Vec<PrHeader>>>();
         thread::spawn(move || {
@@ -25,11 +23,11 @@ impl<W: Write> RepoSelectionHandler <W> {
         });
 
         let screen = RepoSelectionScreen::new(event_sender.clone());
-        RepoSelectionHandler {screen, event_sender, repo_list_receiver, _marker: PhantomData}
+        RepoSelectionHandler {screen, event_sender, repo_list_receiver}
     }
 }
 
-impl <W: Write> ScreenHandler<W> for RepoSelectionHandler <W> {
+impl  ScreenHandler for RepoSelectionHandler  {
     fn update(&mut self) {
         match self.repo_list_receiver.try_recv().ok() {
             Some(ok) => match ok {
@@ -45,7 +43,7 @@ impl <W: Write> ScreenHandler<W> for RepoSelectionHandler <W> {
     }
 }
 
-impl<W: Write> InteractableScreen for RepoSelectionHandler<W> {
+impl InteractableScreen for RepoSelectionHandler {
     fn validate_input(&self, b: u8) -> bool {
         self.screen.validate_input(b)
     }
@@ -55,11 +53,11 @@ impl<W: Write> InteractableScreen for RepoSelectionHandler<W> {
     }
 }
 
-impl <W: Write> DrawableScreen <W> for RepoSelectionHandler <W> {
-    fn draw (&self, buffer: &mut W, rect: Rect) {
+impl  DrawableScreen  for RepoSelectionHandler  {
+    fn draw (&self, buffer: &mut dyn Write, rect: Rect) {
         self.screen.draw(buffer, rect);
     }
 }
 
-impl <W: Write> ApplicationScreen <W> for RepoSelectionHandler <W> {
+impl  ApplicationScreen  for RepoSelectionHandler  {
 }

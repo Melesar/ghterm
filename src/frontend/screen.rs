@@ -8,8 +8,8 @@ pub struct Rect {
     pub h: u16,
 }
 
-pub trait DrawableScreen <W: Write> {
-    fn draw(&self, buffer: &mut W, rect: Rect);
+pub trait DrawableScreen {
+    fn draw(&self, buffer: &mut dyn Write, rect: Rect);
 }
 
 pub trait InteractableScreen {
@@ -17,10 +17,10 @@ pub trait InteractableScreen {
     fn process_input(&mut self, input: u8);
 }
 
-pub trait ApplicationScreen <W: Write>: DrawableScreen<W> + InteractableScreen { 
+pub trait ApplicationScreen : DrawableScreen + InteractableScreen { 
 }
 
-pub trait ScreenHandler <W: Write> : ApplicationScreen<W> {
+pub trait ScreenHandler  : ApplicationScreen {
     fn update (&mut self);
 }
 
@@ -33,7 +33,7 @@ impl Screen {
         Screen { rect }
     }
 
-    pub fn draw_border<W: Write>(&self, buffer: &mut W) {
+    pub fn draw_border(&self, buffer: &mut dyn Write) {
         let x = self.rect.x + 1;
         let y = self.rect.y + 1;
         write!(buffer, "{}", termion::cursor::Goto(x,y)).unwrap();

@@ -9,7 +9,7 @@ use crate::frontend::main_screen_handler::MainScreenHandler;
 
 use events::AppEvent;
 
-pub struct App< R: Read, W: Write>  {
+pub struct App<R: Read, W: Write>  {
     buff_out: W,
     buff_in: R,
     event_listener: mpsc::Receiver<AppEvent>,
@@ -29,7 +29,7 @@ impl<R: Read, W: Write> App<R, W> {
         let size = termion::terminal_size().unwrap();
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
-        let mut current_screen_handler : Box<dyn ScreenHandler<W>> = Box::new(RepoSelectionHandler::new(self.sender.clone()));
+        let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone()));
         self.sender.send(AppEvent::ScreenRepaint).unwrap();
 
         let mut input = self.buff_in.bytes();

@@ -1,32 +1,23 @@
 use std::io::Write;
-use std::marker::PhantomData;
 
-use super::main_screen::MainScreenTab;
 use super::screen::*;
 
-pub struct ConversationTab <W: Write> {
-    _marker: PhantomData<W>,
+pub struct ConversationTab  {
 }
 
-impl <W: Write> ConversationTab<W> {
+impl  ConversationTab {
     pub fn new () -> Self {
-        ConversationTab{_marker: PhantomData}
+        ConversationTab{}
     }
 }
 
-impl <W: Write> MainScreenTab<W> for ConversationTab<W> {
-    fn get_title(&self) -> String {
-        String::new()
-    }
-}
-
-impl <W: Write> DrawableScreen<W> for ConversationTab<W> {
-    fn draw(&self, buffer: &mut W, rect: Rect) {
+impl  DrawableScreen for ConversationTab {
+    fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
         
     }
 }
 
-impl <W: Write> InteractableScreen for ConversationTab<W> {
+impl  InteractableScreen for ConversationTab {
     fn validate_input(&self, input: u8) -> bool {
         false
     }
@@ -36,5 +27,5 @@ impl <W: Write> InteractableScreen for ConversationTab<W> {
     }
 }
 
-impl <W: Write> ApplicationScreen<W> for ConversationTab<W> {
+impl  ApplicationScreen for ConversationTab {
 }
