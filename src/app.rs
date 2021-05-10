@@ -7,6 +7,7 @@ use crate::logs::*;
 use crate::frontend::screen::*;
 use crate::frontend::repo_selection_handler::RepoSelectionHandler;
 use crate::frontend::main_screen_handler::MainScreenHandler;
+use crate::backend::task::*;
 
 use events::AppEvent;
 
@@ -32,7 +33,8 @@ impl<R: Read, W: Write> App<R, W> {
         let size = termion::terminal_size().unwrap();
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
-        let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone()));
+        let mut task_manager = TaskManager::new();
+        let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone(), &mut task_manager));
         self.sender.send(AppEvent::ScreenRepaint).unwrap();
 
         let mut input = self.buff_in.bytes();
@@ -51,13 +53,15 @@ impl<R: Read, W: Write> App<R, W> {
                 _ => (),
             }
 
-            current_screen_handler.update();
+            if task_manager.update() > 0 {
+                current_screen_handler.update();
+            }
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
                     AppEvent::RepoChosen(number) => {
                         write!(self.buff_out, "{}", termion::clear::All).unwrap(); 
-                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone()));
+                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone(), &mut task_manager));
                         self.sender.send(AppEvent::ScreenRepaint).unwrap();
                     },
                     AppEvent::Error(message) => crate::logs::log(&format!("ERROR: {}", message)), //TODO handle the error

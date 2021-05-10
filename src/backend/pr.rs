@@ -45,3 +45,5 @@ pub fn fetch_pr(number: u32) -> Result<Pr, Error> {
     };
     Ok (Pr{info: pr_info})
 }
+
+unsafe impl Send for PrHeader { }

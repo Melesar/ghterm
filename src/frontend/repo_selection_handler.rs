@@ -1,35 +1,30 @@
 use crate::app::events::AppEvent;
+use crate::backend::task::*;
 use crate::backend::pr::{self, PrHeader};
 
-use super::screen::{ApplicationScreen, DrawableScreen, InteractableScreen, Rect, ScreenHandler};
+use super::screen::*;
 use super::repo_selection::RepoSelectionScreen;
 
 use std::sync::mpsc;
-use std::io::Write;
-use std::thread;
+use std::io::{Write, Result};
 
 pub struct  RepoSelectionHandler {
     screen: RepoSelectionScreen,
     event_sender: mpsc::Sender<AppEvent>,
-    repo_list_receiver: mpsc::Receiver<std::io::Result<Vec<PrHeader>>>,
+    task_handle: TaskHandle<Result<Vec<PrHeader>>>,
 }
 
 impl RepoSelectionHandler { 
-    pub fn new (event_sender: mpsc::Sender<AppEvent>) -> Self {
-        let (repo_list_sender, repo_list_receiver) = mpsc::channel::<std::io::Result<Vec<PrHeader>>>();
-        thread::spawn(move || {
-            let prs = pr::list_prs();
-            repo_list_sender.send(prs).unwrap();
-        });
-
+    pub fn new (event_sender: mpsc::Sender<AppEvent>, task_manager: &mut TaskManager) -> Self {
+        let task_handle = task_manager.post(|| pr::list_prs());
         let screen = RepoSelectionScreen::new(event_sender.clone());
-        RepoSelectionHandler {screen, event_sender, repo_list_receiver}
+        RepoSelectionHandler {screen, event_sender, task_handle}
     }
 }
 
-impl  ScreenHandler for RepoSelectionHandler  {
+impl ScreenHandler for RepoSelectionHandler  {
     fn update(&mut self) {
-        match self.repo_list_receiver.try_recv().ok() {
+        match self.task_handle.poll() {
             Some(ok) => match ok {
                 Ok(prs) => {
                     self.screen.set_pr_list(prs);
