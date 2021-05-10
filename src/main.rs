@@ -13,7 +13,5 @@ fn main() -> Result<(), std::io::Error> {
 
     let stdin = termion::async_stdin();
     let app = App::new(stdout, stdin);
-    let result = app.run();
-    logs::clear_logs();
-    result
+    app.run()
 }

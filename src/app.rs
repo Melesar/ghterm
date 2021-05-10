@@ -3,6 +3,7 @@ pub mod events;
 use std::io::{Write, Read};
 use std::sync::mpsc;
 
+use crate::logs::*;
 use crate::frontend::screen::*;
 use crate::frontend::repo_selection_handler::RepoSelectionHandler;
 use crate::frontend::main_screen_handler::MainScreenHandler;
@@ -24,6 +25,8 @@ impl<R: Read, W: Write> App<R, W> {
     }
 
     pub fn run(mut self) -> Result<(), std::io::Error> {
+        start_logs()?;
+
         write!(self.buff_out, "{}", termion::cursor::Hide).unwrap(); 
 
         let size = termion::terminal_size().unwrap();
