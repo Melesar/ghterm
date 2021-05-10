@@ -1,4 +1,5 @@
 use std::io::Write;
+use termion::cursor::Goto;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Rect {
@@ -34,27 +35,26 @@ impl Screen {
     }
 
     pub fn draw_border(&self, buffer: &mut dyn Write) {
+        if self.rect.h < 2 || self.rect.w < 2 {
+            return;
+        }
+        
         let x = self.rect.x + 1;
         let y = self.rect.y + 1;
-        write!(buffer, "{}", termion::cursor::Goto(x,y)).unwrap();
-        for row in 0..self.rect.h {
-            for column in 0..self.rect.w {
-                if row == 0 && column == 0 {
-                    write!(buffer, "┏").unwrap();
-                } else if row == 0 && column == self.rect.w - 1 {
-                    write!(buffer, "┓").unwrap();
-                } else if column == 0 && row == self.rect.h - 1 {
-                    write!(buffer, "┗").unwrap();
-                } else if column == self.rect.w - 1 && row == self.rect.h - 1 {
-                    write!(buffer, "┛").unwrap();
-                } else if row == 0 || row == self.rect.h - 1  {
-                    write!(buffer, "━").unwrap();
-                } else if  column == 0 || column == self.rect.w - 1 {
-                    write!(buffer, "┃").unwrap();
-                } else { 
-                    write!(buffer, " ").unwrap();
-                }
-            }
+
+        write!(buffer, "{}{}", Goto(x,y), "┏").unwrap();
+        write!(buffer, "{}{}", Goto(self.rect.x + self.rect.w, y), "┓").unwrap();
+        write!(buffer, "{}{}", Goto(x, self.rect.y + self.rect.h), "┗").unwrap();
+        write!(buffer, "{}{}", Goto(self.rect.x + self.rect.w, self.rect.y + self.rect.h), "┛").unwrap();
+
+        for column in 1..self.rect.w - 1 {
+            write!(buffer, "{}━", Goto(x + column, y)).unwrap();
+            write!(buffer, "{}━", Goto(x + column, self.rect.y + self.rect.h)).unwrap();
+        }
+
+        for row in 1..self.rect.h - 1 {
+            write!(buffer, "{}┃", Goto(self.rect.x + 1, y + row)).unwrap();
+            write!(buffer, "{}┃", Goto(self.rect.x + self.rect.w, y + row)).unwrap();
         }
     }
 
