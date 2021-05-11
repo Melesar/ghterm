@@ -1,7 +1,8 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local};
 
 use super::gh;
 use std::io::Result;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct PrHeader {
@@ -22,12 +23,15 @@ pub struct PrInfo {
     pub body: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PrComment {
+    pub id: String,
     pub author_name: String,
     pub body: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: DateTime<Local>,
 }
+
+pub struct PrCommentReply (PrComment, Option<String>);
 
 #[derive(Debug)]
 pub struct PrConversationThread {
@@ -79,7 +83,40 @@ pub fn fetch_pr(number: u32) -> Result<Pr> {
 }
 
 pub fn fetch_conversation(number: u32) -> Result<PrConversation> {
-    Ok(PrConversation{items: vec![]})
+    let output = gh::pr_conversation(number)?;
+    let output = &output["data"]["repository"]["pullRequest"];
+    let reviews = &output["reviews"]["edges"];
+    let mut items = vec![];
+    for review in reviews.members() {
+        let review_comment = fetch_pr_comment(review).0;
+        let comments_json = &review["node"]["comments"]["edges"];
+        let mut comments_tree : HashMap<String, Vec<PrComment>> = HashMap::new();
+        for comment in comments_json.members() {
+            let comment = fetch_pr_comment(comment);
+            match comment.1 {
+                Some(parent_id) => if let Some(replies) = comments_tree.get_mut(&parent_id) {
+                    replies.push(comment.0.clone());
+                },
+                None => {comments_tree.insert(comment.0.id.clone(), vec![comment.0.clone()]);},
+            }
+        }
+
+        let threads : Vec<PrConversationThread> = comments_tree.drain().map(|(_k, v)| PrConversationThread{comments: v}).collect();
+        let review = PrReview {review_comment, threads};
+        items.push(ConversationItem::Review(review));
+    }
+    Ok(PrConversation{items})
+}
+
+fn fetch_pr_comment(node: &json::JsonValue) -> PrCommentReply {
+    let id = node["id"].as_str().unwrap().to_string();
+    let author_name = node["author"]["login"].as_str().unwrap().to_string();
+    let body = node["body"].as_str().unwrap().to_string();
+    let reply_to = node["replyTo"].as_str().map(|s| s.to_string());
+    let timestamp = node["createdAt"].as_str().unwrap();
+    let timestamp = DateTime::parse_from_rfc3339(timestamp).unwrap();
+    let timestamp = timestamp.with_timezone(&Local);
+    PrCommentReply(PrComment {id, author_name, body, timestamp}, reply_to)
 }
 
 unsafe impl Send for PrHeader { }

@@ -1,8 +1,8 @@
-use std::{io::ErrorKind, process::Command};
-use std::io::Error;
+use std::process::Command;
+use std::io::{Result, Error, ErrorKind};
 use json::{self, JsonValue};
 
-pub fn pr_list() -> Result<JsonValue, Error> {
+pub fn pr_list() -> Result<JsonValue> {
     gh_qraphql("query($name: String!, $owner: String!) {
                   repository(owner: $owner, name: $name) {
                       pullRequests(first: 5 states: OPEN) {
@@ -17,7 +17,7 @@ pub fn pr_list() -> Result<JsonValue, Error> {
               }")
 }
 
-pub fn pr_view(number: u32) -> Result<JsonValue, Error> {
+pub fn pr_view(number: u32) -> Result<JsonValue> {
     gh_qraphql(&format!("query($name: String!, $owner: String!) {{
                     repository(owner: $owner name: $name) {{
                         pullRequest(number: {}) {{
@@ -31,7 +31,33 @@ pub fn pr_view(number: u32) -> Result<JsonValue, Error> {
                 }}", number))
 }
 
-fn gh_qraphql(graphql_query: &str) -> Result<JsonValue, Error> {
+pub fn pr_conversation(number: u32) -> Result<JsonValue> {
+    gh_qraphql(&format!("query($name: String!, $owner: String!) {{
+                    repository(owner: $owner name: $name) {{
+                        pullRequest(number: {}) {{
+                            reviews (last: 10) {{
+                                edges {{
+                                  node {{
+                                    author {{login}}
+                                    body
+                                    comments (last: 10) {{
+                                      edges {{
+                                        node {{
+                                          author {{login}}
+                                          body
+                                          createdAt
+                                        }}
+                                      }}
+                                    }}
+                                  }}
+                                }}
+                              }}
+                        }}
+                    }}
+                }}", number))
+}
+
+fn gh_qraphql(graphql_query: &str) -> Result<JsonValue> {
     let output = Command::new("gh")
         .args(&["api", "graphql"])
         .args(&["-F", "owner=:owner"])
