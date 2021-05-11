@@ -18,7 +18,7 @@ impl MainScreenHandler {
     pub fn new (number: u32, event_sender: mpsc::Sender<AppEvent>, task_manager: &mut TaskManager) -> Self {
         let screen = MainScreen::new(event_sender.clone());
         let task_handle = task_manager.post(move || pr::fetch_pr(number));
-        MainScreenHandler{screen, event_sender, task_handle }
+        MainScreenHandler { screen, event_sender, task_handle }
     }
 }
 

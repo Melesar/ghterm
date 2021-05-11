@@ -1,5 +1,7 @@
+use chrono::{DateTime, Utc};
+
 use super::gh;
-use std::io::Error;
+use std::io::Result;
 
 #[derive(Debug)]
 pub struct PrHeader {
@@ -20,7 +22,37 @@ pub struct PrInfo {
     pub body: String,
 }
 
-pub fn list_prs () -> Result<Vec<PrHeader>, Error> {
+#[derive(Debug)]
+pub struct PrComment {
+    pub author_name: String,
+    pub body: String,
+    pub timestamp: DateTime<Utc>,
+}
+
+#[derive(Debug)]
+pub struct PrConversationThread {
+    // pub code_hunk: Option<CodeHunk>,
+    pub comments: Vec<PrComment>,
+}
+
+#[derive(Debug)]
+pub struct PrReview {
+    pub review_comment: PrComment,
+    pub threads: Vec<PrConversationThread>,
+}
+
+#[derive(Debug)]
+pub enum ConversationItem {
+    Comment(PrComment),
+    Review(PrReview),
+}
+
+#[derive(Debug)]
+pub struct PrConversation {
+    pub items: Vec<ConversationItem>,
+}
+
+pub fn list_prs () -> Result<Vec<PrHeader>> {
     let output = gh::pr_list()?;
     let output = output["data"]["repository"]["pullRequests"]["edges"].members();
     let mut prs = Vec::new();
@@ -33,7 +65,7 @@ pub fn list_prs () -> Result<Vec<PrHeader>, Error> {
     Ok(prs)
 }
 
-pub fn fetch_pr(number: u32) -> Result<Pr, Error> { 
+pub fn fetch_pr(number: u32) -> Result<Pr> { 
     let output = gh::pr_view(number)?;
     let output = &output["data"]["repository"]["pullRequest"];
     let pr_info = PrInfo {
@@ -44,6 +76,10 @@ pub fn fetch_pr(number: u32) -> Result<Pr, Error> {
         body: output["body"].as_str().unwrap().to_string(),
     };
     Ok (Pr{info: pr_info})
+}
+
+pub fn fetch_conversation(number: u32) -> Result<PrConversation> {
+    Ok(PrConversation{items: vec![]})
 }
 
 unsafe impl Send for PrHeader { }
