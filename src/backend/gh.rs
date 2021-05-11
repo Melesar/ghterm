@@ -38,23 +38,19 @@ pub fn pr_conversation(number: u32) -> Result<JsonValue> {
                             reviews (last: 10) {{
                                 edges {{
                                   node {{
+                                    id
                                     author {{login}}
                                     body
+                                    createdAt
                                     comments (last: 10) {{
                                       edges {{
                                         node {{
+                                          id
                                           author {{login}}
                                           body
                                           createdAt
-                                        }}
-                                      }}
-                                    }}
-                                  }}
-                                }}
-                              }}
-                        }}
-                    }}
-                }}", number))
+                                          replyTo {{ id }}
+                                        }} }} }} }} }} }} }} }} }}", number))
 }
 
 fn gh_qraphql(graphql_query: &str) -> Result<JsonValue> {

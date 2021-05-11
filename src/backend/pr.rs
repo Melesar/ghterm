@@ -88,11 +88,11 @@ pub fn fetch_conversation(number: u32) -> Result<PrConversation> {
     let reviews = &output["reviews"]["edges"];
     let mut items = vec![];
     for review in reviews.members() {
-        let review_comment = fetch_pr_comment(review).0;
+        let review_comment = fetch_pr_comment(&review["node"]).0;
         let comments_json = &review["node"]["comments"]["edges"];
         let mut comments_tree : HashMap<String, Vec<PrComment>> = HashMap::new();
         for comment in comments_json.members() {
-            let comment = fetch_pr_comment(comment);
+            let comment = fetch_pr_comment(&comment["node"]);
             match comment.1 {
                 Some(parent_id) => if let Some(replies) = comments_tree.get_mut(&parent_id) {
                     replies.push(comment.0.clone());
@@ -105,6 +105,7 @@ pub fn fetch_conversation(number: u32) -> Result<PrConversation> {
         let review = PrReview {review_comment, threads};
         items.push(ConversationItem::Review(review));
     }
+    crate::logs::log(&format!("{:?}", items));
     Ok(PrConversation{items})
 }
 
