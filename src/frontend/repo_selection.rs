@@ -9,7 +9,7 @@ use crate::app::events::AppEvent;
 pub struct RepoSelectionScreen  {
     event_sender: mpsc::Sender<AppEvent>,
     prs: Option<Vec<PrHeader>>,
-    selected_index: u32,
+    selected_index: usize,
 }
 
 impl RepoSelectionScreen {
@@ -44,7 +44,7 @@ impl RepoSelectionScreen {
         } else {
             current_index
         };
-        self.selected_index = current_index as u32;
+        self.selected_index = current_index as usize;
         self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
     }
 }
@@ -59,7 +59,7 @@ impl DrawableScreen for RepoSelectionScreen  {
             
             let mut start_position = (rect.x + 4, rect.h / 2);
             for (index, pr) in prs.iter().enumerate() {
-                let is_selected  = index as u32 == self.selected_index;
+                let is_selected  = index == self.selected_index;
                 let bg : termion::color::Bg<&dyn termion::color::Color> = if is_selected {
                     termion::color::Bg(&termion::color::White)
                 } else {
@@ -103,7 +103,10 @@ impl InteractableScreen for RepoSelectionScreen {
         match input {
             b'j' => self.update_selection(1), 
             b'k' => self.update_selection(-1),
-            13 => self.event_sender.send(AppEvent::RepoChosen(self.selected_index)).unwrap(),
+            13 => if let Some(repos) = &self.prs {
+                let chosen_repo = &repos[self.selected_index as usize];
+                self.event_sender.send(AppEvent::RepoChosen(chosen_repo.number)).unwrap();
+            },
             _ => (),
         }
     }
