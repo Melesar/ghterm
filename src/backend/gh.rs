@@ -57,7 +57,7 @@ struct GqlQueryBuilder {
 }
 
 impl GqlQueryBuilder {
-    pub fn new() -> Self {
+    fn new() -> Self {
         GqlQueryBuilder {
             repo_owner: String::from(":owner"),
             repo_name: String::from(":repo"),
@@ -66,23 +66,23 @@ impl GqlQueryBuilder {
         }
     }
 
-    pub fn set_repo(&mut self, owner: &str, name: &str) -> &mut Self {
+    fn set_repo(&mut self, owner: &str, name: &str) -> &mut Self {
         self.repo_owner = String::from(owner);
         self.repo_name = String::from(name);
         self
     }
 
-    pub fn add_string_param(&mut self, param_name: &str, param_value: &str) -> &mut Self {
+    fn add_string_param(&mut self, param_name: &str, param_value: &str) -> &mut Self {
         self.string_params.insert(String::from(param_name), String::from(param_value));
         self
     }
 
-    pub fn add_int_param(&mut self, param_name: &str, param_value: u32) -> &mut Self {
+    fn add_int_param(&mut self, param_name: &str, param_value: u32) -> &mut Self {
         self.int_params.insert(String::from(param_name), param_value);
         self
     }
 
-    pub fn execute(&mut self, query: &str) -> Result<JsonValue> {
+    fn execute(&mut self, query: &str) -> Result<JsonValue> {
         let mut cmd = Command::new("gh");
         cmd.args(&["api", "graphql"]);
         cmd.args(&["-F", &format!("owner={}", self.repo_owner)]);
