@@ -1,8 +1,7 @@
 use chrono::{DateTime, Local};
-
-use super::gh;
+use super::gh::*;
+use json::JsonValue;
 use std::io::Result;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct PrHeader {
@@ -56,9 +55,8 @@ pub struct PrConversation {
     pub items: Vec<ConversationItem>,
 }
 
-pub fn list_prs () -> Result<Vec<PrHeader>> {
-    let output = gh::pr_list()?;
-    let output = output["data"]["repository"]["pullRequests"]["edges"].members();
+pub fn list_prs (json: JsonValue) -> Vec<PrHeader> {
+    let output = json["data"]["repository"]["pullRequests"]["edges"].members();
     let mut prs = Vec::new();
     for pr in output {
         let number = pr["node"]["number"].as_u32().unwrap();
@@ -66,47 +64,12 @@ pub fn list_prs () -> Result<Vec<PrHeader>> {
         prs.push(PrHeader{number, title});
     }
     
-    Ok(prs)
+    prs
 }
 
-pub fn fetch_pr(number: u32) -> Result<Pr> { 
-    let output = gh::pr_view(number)?;
-    let output = &output["data"]["repository"]["pullRequest"];
-    let pr_info = PrInfo {
-        number: output["number"].as_u32().unwrap(),
-        title: output["title"].as_str().unwrap().to_string(),
-        base_branch: output["baseRefName"].as_str().unwrap().to_string(),
-        head_branch: output["headRefName"].as_str().unwrap().to_string(),
-        body: output["body"].as_str().unwrap().to_string(),
-    };
-    Ok (Pr{info: pr_info})
-}
 
 pub fn fetch_conversation(number: u32) -> Result<PrConversation> {
-    let output = gh::pr_conversation(number)?;
-    let output = &output["data"]["repository"]["pullRequest"];
-    let reviews = &output["reviews"]["edges"];
-    let mut items = vec![];
-    for review in reviews.members() {
-        let review_comment = fetch_pr_comment(&review["node"]).0;
-        let comments_json = &review["node"]["comments"]["edges"];
-        let mut comments_tree : HashMap<String, Vec<PrComment>> = HashMap::new();
-        for comment in comments_json.members() {
-            let comment = fetch_pr_comment(&comment["node"]);
-            match comment.1 {
-                Some(parent_id) => if let Some(replies) = comments_tree.get_mut(&parent_id) {
-                    replies.push(comment.0.clone());
-                },
-                None => {comments_tree.insert(comment.0.id.clone(), vec![comment.0.clone()]);},
-            }
-        }
-
-        let threads : Vec<PrConversationThread> = comments_tree.drain().map(|(_k, v)| PrConversationThread{comments: v}).collect();
-        let review = PrReview {review_comment, threads};
-        items.push(ConversationItem::Review(review));
-    }
-    crate::logs::log(&format!("{:?}", items));
-    Ok(PrConversation{items})
+    Err(std::io::Error::new(std::io::ErrorKind::Other, "sdkfsdf"))
 }
 
 fn fetch_pr_comment(node: &json::JsonValue) -> PrCommentReply {

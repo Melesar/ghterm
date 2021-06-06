@@ -8,21 +8,23 @@ use crate::frontend::screen::*;
 use crate::frontend::repo_selection_handler::RepoSelectionHandler;
 use crate::frontend::main_screen_handler::MainScreenHandler;
 use crate::backend::task::*;
+use crate::backend::gh::GhClient;
 
 use events::AppEvent;
 
 pub struct App<R: Read, W: Write>  {
     buff_out: W,
     buff_in: R,
+    gh_client: GhClient,
     event_listener: mpsc::Receiver<AppEvent>,
     sender: mpsc::Sender<AppEvent>,
 }
 
 impl<R: Read, W: Write> App<R, W> {
 
-    pub fn new(buff_out: W, buff_in: R) -> Self {
+    pub fn new(buff_out: W, buff_in: R, gh_client: GhClient) -> Self {
         let (sender, event_listener) = mpsc::channel::<AppEvent>();
-        App {buff_out, buff_in, event_listener, sender}
+        App {buff_out, buff_in, gh_client, event_listener, sender}
     }
 
     pub fn run(mut self) -> Result<(), std::io::Error> {
@@ -34,7 +36,7 @@ impl<R: Read, W: Write> App<R, W> {
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
         let mut task_manager = TaskManager::new();
-        let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone(), &mut task_manager));
+        let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone(), &mut task_manager, &mut self.gh_client));
         self.sender.send(AppEvent::ScreenRepaint).unwrap();
 
         let mut input = self.buff_in.bytes();

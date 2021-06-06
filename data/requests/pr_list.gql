@@ -1,0 +1,1 @@
+pullRequests(first: 5 states: OPEN) { edges { node { number title } } }

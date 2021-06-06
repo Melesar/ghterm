@@ -9,5 +9,4 @@ edition = "2018"
 [dependencies]
 termion = "1"
 json = "0.12.4"
-http = "0.2.4"
 chrono = "0.4"

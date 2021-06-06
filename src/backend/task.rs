@@ -17,8 +17,8 @@ impl TaskManager {
         TaskManager{ tasks: vec![], sender, receiver }
     }
 
-    pub fn post<F, T>(&mut self, task: F) -> TaskHandle<T> 
-        where F: Fn() -> T + Send + 'static,
+    pub fn post<F, T>(&mut self, mut task: F) -> TaskHandle<T> 
+        where F: FnMut() -> T + Send + 'static,
               T: Send + 'static {
 
         let (sender, receiver) = mpsc::channel();
