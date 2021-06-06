@@ -1,5 +1,6 @@
 use crate::app::events::AppEvent;
 use crate::backend::pr;
+use crate::backend::pr::PrConversation;
 use super::screen::*;
 
 use termion::cursor::Goto;
@@ -25,9 +26,8 @@ impl MainScreen {
         MainScreen{tabs, current_tab_index: 0, event_sender, pr: None}
     }
 
-    pub fn set_pr(&mut self, pr: pr::Pr) {
-        self.pr = Some(pr);
-        self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
+    pub fn set_conversation(&mut self, conversation: PrConversation) {
+
     }
 }
 

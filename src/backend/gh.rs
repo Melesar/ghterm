@@ -25,10 +25,11 @@ impl GhClient {
         Ok(request)
     }
     
-    pub fn pr_conversation(&mut self) -> Result<GqlRequest> {
+    pub fn pr_conversation(&mut self, number: u32) -> Result<GqlRequest> {
         let query = self.get_query("pr_conversation")?;
         let request = GqlQueryBuilder::new()
             .set_repo(self.repo_owner.clone(), self.repo_name.clone())
+            .add_int_param("number", number)
             .set_query(query)
             .build();
         Ok(request)

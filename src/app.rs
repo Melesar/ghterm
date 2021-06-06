@@ -63,7 +63,7 @@ impl<R: Read, W: Write> App<R, W> {
                 match evt {
                     AppEvent::RepoChosen(number) => {
                         write!(self.buff_out, "{}", termion::clear::All).unwrap(); 
-                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone(), &mut task_manager));
+                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone(), &mut task_manager, &mut self.gh_client));
                         self.sender.send(AppEvent::ScreenRepaint).unwrap();
                     },
                     AppEvent::Error(message) => crate::logs::log(&format!("ERROR: {}", message)), //TODO handle the error

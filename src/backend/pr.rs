@@ -68,8 +68,8 @@ pub fn list_prs (json: JsonValue) -> Vec<PrHeader> {
 }
 
 
-pub fn fetch_conversation(number: u32) -> Result<PrConversation> {
-    Err(std::io::Error::new(std::io::ErrorKind::Other, "sdkfsdf"))
+pub fn parse_conversation(json: JsonValue) -> PrConversation {
+    PrConversation{items: vec![]}
 }
 
 fn fetch_pr_comment(node: &json::JsonValue) -> PrCommentReply {
