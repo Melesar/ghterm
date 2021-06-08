@@ -1,5 +1,5 @@
 pullRequest(number: $number) {
-	reviewThreads(first: 15) { edges { node { id originalLine comments (first: 15) { edges { node { id author {login} body replyTo {id body} publishedAt createdAt } } } } } } 
-	reviews (first: 15) { edges { node { id state comments (first: 15) { edges { node { id body pullRequestReview {id} } } } author {login} body publishedAt submittedAt} } }
-	comments(first: 15) { edges { node{ author {login} body } } }
+	reviewThreads(first: 15) { edges { node { id originalLine comments (first: 15) { edges { node { id author {login} body publishedAt } } } } } } 
+	reviews (first: 15) { edges { node { id state comments (first: 15) { edges { node { id body author {login} publishedAt } } } author {login} body publishedAt } } }
+	comments(first: 15) { edges { node { id author {login} body publishedAt } } }
 }

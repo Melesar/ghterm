@@ -13,7 +13,7 @@ fn main() -> Result<(), std::io::Error> {
     let stdout = termion::screen::AlternateScreen::from(stdout);
 
     let stdin = termion::async_stdin();
-    let gh_client = GhClient::new(String::from("blindflugstudios"), String::from("FirstStrike_Armageddon")); //TODO get repo from arguments
+    let gh_client = GhClient::new(String::from("blindflugstudios"), String::from("First-Strike-Evolution")); //TODO get repo from arguments
     let app = App::new(stdout, stdin, gh_client);
     app.run()
 }
