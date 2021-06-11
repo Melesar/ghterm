@@ -32,6 +32,7 @@ pub struct PrComment {
 
 #[derive(Debug)]
 pub struct PrConversationThread {
+    //TODO Parse code hunks
     // pub code_hunk: Option<CodeHunk>,
     pub comments: Vec<PrComment>,
 }

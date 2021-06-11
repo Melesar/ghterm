@@ -21,7 +21,7 @@ pub trait InteractableScreen {
 pub trait ApplicationScreen : DrawableScreen + InteractableScreen { 
 }
 
-pub trait ScreenHandler  : ApplicationScreen {
+pub trait ScreenHandler : ApplicationScreen {
     fn update (&mut self);
 }
 
@@ -56,6 +56,28 @@ impl Screen {
             write!(buffer, "{}┃", Goto(self.rect.x + 1, y + row)).unwrap();
             write!(buffer, "{}┃", Goto(self.rect.x + self.rect.w, y + row)).unwrap();
         }
+    }
+
+    pub fn merge_vertically(top: Screen, bottom: Screen) -> Self {
+        let rect = Rect {x: top.rect.x, y: top.rect.y, h: top.rect.h + bottom.rect.h, w: top.rect.w };
+        Screen::new(rect)
+    }
+
+    pub fn merge_horizontally(left: Screen, right: Screen) -> Self {
+        let rect = Rect {x: left.rect.x, y: left.rect.y, h: left.rect.h, w: left.rect.w + right.rect.w };
+        Screen::new(rect)
+    }
+
+    pub fn split_vertically(self) -> (Self, Self) {
+        let left = Rect { x: self.rect.x, y: self.rect.y, h: self.rect.h, w: self.rect.w / 2 };
+        let right = Rect { x: self.rect.x + self.rect.w / 2, y: self.rect.y, h: self.rect.h, w: self.rect.w / 2 };
+        (Screen::new(left), Screen::new(right))
+    }
+
+    pub fn split_horizontally(self) -> (Self, Self) {
+        let top = Rect { x: self.rect.x, y: self.rect.y, h: self.rect.h / 2, w: self.rect.w };
+        let bottom = Rect { x: self.rect.x, y: self.rect.y + self.rect.h / 2, h: self.rect.h / 2, w: self.rect.w };
+        (Screen::new(top), Screen::new(bottom))
     }
 
     pub fn get_content_rect(&self) -> Rect {
