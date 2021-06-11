@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::sync::mpsc;
 
-use crate::backend::pr::PrConversation;
+use crate::backend::pr::{PrConversation, ConversationItem};
 
 use super::main_screen_handler::MainScreenEvent;
 use super::screen::*;
@@ -23,6 +23,24 @@ impl ConversationTab {
 
 impl DrawableScreen for ConversationTab {
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
+        if let Some(conv) = &self.conversation {
+            let comments : Vec<_> = conv.items
+                .iter()
+                .map(|e| match e {
+                    ConversationItem::Review(r) => &r.review_comment,
+                    ConversationItem::Comment(c) => &c,
+                })
+                .collect();
+
+            let screen = Screen::new(rect);
+            let mut writer = screen.get_writer();
+            for comment in comments {
+                writer.write_line(buffer, &comment.author_name);
+                writer.write_line(buffer, &comment.body);
+                writer.write_line(buffer, "");
+            }
+            buffer.flush().unwrap();
+        }
     }
 }
 

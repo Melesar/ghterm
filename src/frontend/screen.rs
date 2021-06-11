@@ -80,12 +80,51 @@ impl Screen {
         (Screen::new(top), Screen::new(bottom))
     }
 
+    pub fn get_writer(&self) -> ScreenWriter {
+        ScreenWriter { rect: self.get_content_rect(), line_index: 0 }
+    }
+
     pub fn get_content_rect(&self) -> Rect {
         Rect {
             x: self.rect.x + 1,
             y: self.rect.y + 1,
             w: self.rect.w - 1,
             h: self.rect.h - 1,
+        }
+    }
+}
+
+pub struct ScreenWriter {
+    rect: Rect,
+    line_index: u16,
+}
+
+impl ScreenWriter {
+    pub fn write_line(&mut self, buffer: &mut dyn Write, message: &str) {
+        if message.len() == 0 {
+            self.line_index += 1;
+            return;
+        }
+
+        if self.rect.h <= self.line_index {
+            return;
+        }
+
+        let available_width = self.rect.w;
+        let mut total_characters = message.len();
+        let mut characters_written : usize = 0;
+        while total_characters > 0 {
+            let y_pos = self.rect.y + self.line_index + 1;
+            let mut to_write = std::cmp::min(available_width as usize, total_characters);
+            let mut message_slice = &message[characters_written..(characters_written + to_write)];
+            if let Some(idx) = message_slice.char_indices().find(|(_, c)| *c == '\n').map(|(i, _)| i) {
+                message_slice = &message_slice[0..idx];
+                to_write = idx + 1;
+            }
+            write!(buffer, "{}{}", Goto(self.rect.x, y_pos), message_slice).unwrap();
+            total_characters -= to_write;
+            characters_written += to_write;
+            self.line_index += 1;
         }
     }
 }
