@@ -1,9 +1,18 @@
-use std::collections::{HashMap, hash_map::Entry};
-use std::io::Read;
+use std::collections::HashMap;
 use std::process::Command;
-use std::io::{Result, Error, ErrorKind};
 use json::{self, JsonValue};
 use std::fs;
+
+#[derive(Debug)]
+pub struct GhError {
+    pub message: String
+}
+
+impl GhError {
+    fn new(message: &str) -> Self {
+        GhError {message: message.to_string() }
+    }
+}
 
 pub struct GhClient {
     repo_owner: String,
@@ -12,11 +21,25 @@ pub struct GhClient {
 }
 
 impl GhClient {
-    pub fn new(repo_owner: String, repo_name: String) -> Self {
-        GhClient {repo_owner, repo_name, queries_map: HashMap::new()}
+    pub fn new(repo_owner: String, repo_name: String) -> Result<Self, std::io::Error> {
+        let queries_map : HashMap<String, String>= fs::read_dir(GhClient::get_requests_directory())?
+            .filter_map(|e| e.ok())
+            .filter_map(|e| match e.file_type() { 
+                Ok(ft) => if ft.is_file() && e.file_name().to_str().unwrap().ends_with(".gql") {
+                    Some(e.path())
+                } else {
+                    None
+                },
+                Err(_) => None
+            })
+            .filter_map(|p| p.file_stem()
+                        .map(|os| os.to_str().map(|s| s.to_string()).unwrap())
+                        .zip(fs::read_to_string(p).ok()))
+            .collect();
+        Ok(GhClient {repo_owner, repo_name, queries_map})
     }
 
-    pub fn pr_list(&mut self) -> Result<GqlRequest> {
+    pub fn pr_list(&self) -> Result<GqlRequest, GhError> {
         let query = self.get_query("pr_list")?;
         let request = GqlQueryBuilder::new()
             .set_repo(self.repo_owner.clone(), self.repo_name.clone())
@@ -25,7 +48,7 @@ impl GhClient {
         Ok(request)
     }
     
-    pub fn pr_conversation(&mut self, number: u32) -> Result<GqlRequest> {
+    pub fn pr_conversation(&self, number: u32) -> Result<GqlRequest, GhError> {
         let query = self.get_query("pr_conversation")?;
         let request = GqlQueryBuilder::new()
             .set_repo(self.repo_owner.clone(), self.repo_name.clone())
@@ -35,26 +58,20 @@ impl GhClient {
         Ok(request)
     }
 
-    fn get_query(&mut self, name: &str) -> Result<String> {
-        match self.queries_map.entry(String::from(name)) {
-            Entry::Occupied(q) => Ok(q.get().to_string()),
-            Entry::Vacant(v) => {
-                let file_name = GhClient::get_file_name(name);
-                let mut file = fs::File::open(file_name)?;
-                let mut content = String::new();
-                file.read_to_string(&mut content)?;
-                Ok(v.insert(content).to_string())
-            }
-        }
+    fn get_query(&self, name: &str) -> Result<String, GhError> {
+        self.queries_map
+            .get(name)
+            .map(|s| s.to_string())
+            .ok_or(GhError::new(&format!("Query template {} wasn't found", name)))
     }
 
     #[cfg(debug_assertions)]
-    fn get_file_name(request_name: &str) -> String {
-        format!("data/requests/{}.gql", request_name)
+    fn get_requests_directory() -> String {
+        "data/requests".to_string()
     }
 
     #[cfg(not(debug_assertions))]
-    fn get_file_name(request_name: &str) -> String {
+    fn get_requests_directory() -> String {
         //TODO use XDG_DATA_HOME
         String::new()
     }
@@ -66,16 +83,16 @@ pub struct GqlRequest {
 }
 
 impl GqlRequest {
-    pub fn execute(&mut self) -> Result<JsonValue> {
-        let output = self.cmd.output()?;
+    pub fn execute(&mut self) -> Result<JsonValue, GhError> {
+        let output = self.cmd.output().map_err(|e| GhError::new(&e.to_string()))?;
         crate::logs::log(&format!("{:?}", output));
         if !output.status.success() {
-            return Err(Error::new(std::io::ErrorKind::Other, String::from_utf8(output.stderr).unwrap()));
+            return Err(GhError::new(&String::from_utf8(output.stderr).unwrap()));
         }
 
         let output = String::from_utf8(output.stdout).unwrap();
         json::parse(&output).map_err(|e| {
-            std::io::Error::new(ErrorKind::Other, e.to_string())
+            GhError::new(&format!("Got malformed json: {}", e.to_string()))
         })
     }
 }

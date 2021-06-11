@@ -28,8 +28,6 @@ impl<R: Read, W: Write> App<R, W> {
     }
 
     pub fn run(mut self) -> Result<(), std::io::Error> {
-        start_logs()?;
-
         write!(self.buff_out, "{}", termion::cursor::Hide).unwrap(); 
 
         let size = termion::terminal_size().unwrap();
@@ -55,15 +53,13 @@ impl<R: Read, W: Write> App<R, W> {
                 _ => (),
             }
 
-            if task_manager.update() > 0 {
-                current_screen_handler.update();
-            }
+            current_screen_handler.update();
 
             if let Some(evt) = self.event_listener.try_recv().ok() {
                 match evt {
                     AppEvent::RepoChosen(number) => {
                         write!(self.buff_out, "{}", termion::clear::All).unwrap(); 
-                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone(), &mut task_manager, &mut self.gh_client));
+                        current_screen_handler = Box::new(MainScreenHandler::new(number, self.sender.clone(), &self.gh_client));
                         self.sender.send(AppEvent::ScreenRepaint).unwrap();
                     },
                     AppEvent::Error(message) => crate::logs::log(&format!("ERROR: {}", message)), //TODO handle the error

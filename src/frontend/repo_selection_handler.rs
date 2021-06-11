@@ -1,19 +1,19 @@
 use crate::app::events::AppEvent;
 use crate::backend::task::*;
 use crate::backend::pr::{self, PrHeader};
-use crate::backend::gh::GhClient;
+use crate::backend::gh::{GhClient, GhError};
 use json::JsonValue;
 
 use super::screen::*;
 use super::repo_selection::RepoSelectionScreen;
 
 use std::sync::mpsc;
-use std::io::{Write, Result};
+use std::io::Write;
 
 pub struct RepoSelectionHandler {
     screen: RepoSelectionScreen,
     event_sender: mpsc::Sender<AppEvent>,
-    task_handle: TaskHandle<Result<JsonValue>>,
+    task_handle: TaskHandle<Result<JsonValue, GhError>>,
 }
 
 impl RepoSelectionHandler { 
@@ -33,7 +33,7 @@ impl ScreenHandler for RepoSelectionHandler  {
                     let prs = pr::list_prs(json);
                     self.screen.set_pr_list(prs)
                 },
-                Err(error) => self.event_sender.send(AppEvent::Error(error.to_string())).unwrap()
+                Err(error) => self.event_sender.send(AppEvent::Error(error.message)).unwrap()
             }
             None => (),
         }
