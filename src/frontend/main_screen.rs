@@ -108,5 +108,6 @@ impl InteractableScreen for MainScreen  {
 
     fn process_input(&mut self, input: u8) {
         self.tabs[self.current_tab_index].process_input(input);
+        self.app_event_sender.send(AppEvent::ScreenRepaint).unwrap();
     }
 }
