@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::sync::mpsc;
+use std::iter::FromIterator;
 
 use crate::backend::pr::{PrConversation, ConversationItem};
 
@@ -37,7 +38,7 @@ impl DrawableScreen for ConversationTab {
             for comment in comments {
                 writer.write_line(buffer, &comment.author_name);
                 writer.write_line(buffer, &comment.body);
-                writer.write_line(buffer, "");
+                writer.write_line(buffer, &String::from_iter(std::iter::repeat('-').take(screen.get_content_rect().w as usize)));
             }
             buffer.flush().unwrap();
         }
