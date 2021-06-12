@@ -10,11 +10,12 @@ use super::screen::*;
 pub struct ConversationTab  {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
     conversation: Option<PrConversation>,
+    selected_conversation: usize,
 }
 
 impl ConversationTab {
     pub fn new (screen_event_sender: mpsc::Sender<MainScreenEvent>) -> Self {
-        ConversationTab{screen_event_sender, conversation: None}
+        ConversationTab{screen_event_sender, conversation: None, selected_conversation: 0}
     }
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
@@ -35,10 +36,12 @@ impl DrawableScreen for ConversationTab {
 
             let screen = Screen::new(rect);
             let mut writer = screen.get_writer();
-            for comment in comments {
+            for (index, comment) in comments.into_iter().enumerate() {
+                writer.set_selection(index == self.selected_conversation);
                 writer.write_line(buffer, &comment.author_name);
                 writer.write_line(buffer, &comment.body);
-                writer.write_line(buffer, &String::from_iter(std::iter::repeat('-').take(screen.get_content_rect().w as usize)));
+                writer.set_selection(false);
+                writer.separator(buffer);
             }
             buffer.flush().unwrap();
         }

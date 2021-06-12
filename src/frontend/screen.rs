@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::iter::FromIterator;
 use termion::cursor::Goto;
 
 #[derive(Copy, Clone, Debug)]
@@ -68,20 +69,22 @@ impl Screen {
         Screen::new(rect)
     }
 
-    pub fn split_vertically(self) -> (Self, Self) {
+    pub fn split_vertically(&mut self) -> Self {
         let left = Rect { x: self.rect.x, y: self.rect.y, h: self.rect.h, w: self.rect.w / 2 };
         let right = Rect { x: self.rect.x + self.rect.w / 2, y: self.rect.y, h: self.rect.h, w: self.rect.w / 2 };
-        (Screen::new(left), Screen::new(right))
+        self.rect = left;
+        Screen::new(right)
     }
 
-    pub fn split_horizontally(self) -> (Self, Self) {
+    pub fn split_horizontally(&mut self) -> Self {
         let top = Rect { x: self.rect.x, y: self.rect.y, h: self.rect.h / 2, w: self.rect.w };
         let bottom = Rect { x: self.rect.x, y: self.rect.y + self.rect.h / 2, h: self.rect.h / 2, w: self.rect.w };
-        (Screen::new(top), Screen::new(bottom))
+        self.rect = top;
+        Screen::new(bottom)
     }
 
     pub fn get_writer(&self) -> ScreenWriter {
-        ScreenWriter { rect: self.get_content_rect(), line_index: 0 }
+        ScreenWriter { rect: self.get_content_rect(), line_index: 0, is_selection: false}
     }
 
     pub fn get_content_rect(&self) -> Rect {
@@ -97,9 +100,18 @@ impl Screen {
 pub struct ScreenWriter {
     rect: Rect,
     line_index: u16,
+    is_selection: bool,
 }
 
 impl ScreenWriter {
+    fn available_width(&self) -> u16 {
+        self.rect.w - 2
+    }
+
+    fn left_padding(&self) -> u16 {
+        self.rect.x + 2
+    }
+
     pub fn write_line(&mut self, buffer: &mut dyn Write, message: &str) {
         if message.len() == 0 {
             self.line_index += 1;
@@ -110,7 +122,7 @@ impl ScreenWriter {
             return;
         }
 
-        let available_width = self.rect.w;
+        let available_width = self.available_width();
         let mut total_characters = message.len();
         let mut characters_written : usize = 0;
         while total_characters > 0 {
@@ -121,10 +133,33 @@ impl ScreenWriter {
                 message_slice = &message_slice[0..idx];
                 to_write = idx + 1;
             }
-            write!(buffer, "{}{}", Goto(self.rect.x, y_pos), message_slice).unwrap();
+
+            write!(buffer, "{}", Goto(self.rect.x, y_pos)).unwrap();
+            if self.is_selection {
+                write!(buffer, "{}", termion::color::Bg(termion::color::White)).unwrap();
+            } else {
+                write!(buffer, "{}", termion::color::Bg(termion::color::Black)).unwrap();
+            }
+            write!(buffer, " {}", termion::color::Bg(termion::color::Reset)).unwrap();
+            write!(buffer, "{}", Goto(self.left_padding(), y_pos)).unwrap();
+            write!(buffer, "{}", message_slice).unwrap();
             total_characters -= to_write;
             characters_written += to_write;
             self.line_index += 1;
         }
+    }
+
+    pub fn set_selection(&mut self, is_selected: bool) {
+        self.is_selection = is_selected;
+    }
+
+    pub fn separator(&mut self, buffer: &mut dyn Write) {
+        if self.rect.h <= self.line_index {
+            return;
+        }
+        
+        let separator = String::from_iter(std::iter::repeat('-').take(self.available_width() as usize));
+        write!(buffer, "{}{}", Goto(self.left_padding(), self.rect.y + self.line_index + 1), separator).unwrap();
+        self.line_index += 1;
     }
 }

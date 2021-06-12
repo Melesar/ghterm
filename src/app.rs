@@ -3,7 +3,6 @@ pub mod events;
 use std::io::{Write, Read};
 use std::sync::mpsc;
 
-use crate::logs::*;
 use crate::frontend::screen::*;
 use crate::frontend::repo_selection_handler::RepoSelectionHandler;
 use crate::frontend::main_screen_handler::MainScreenHandler;
