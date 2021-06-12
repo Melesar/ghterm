@@ -79,7 +79,7 @@ impl DrawableScreen for MainScreen  {
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
         let screen_rect = Rect {y: rect.y + 1, h: rect.h - 1, ..rect};
         let tab_screen = Screen::new(screen_rect);
-        tab_screen.draw_border(buffer);
+        //tab_screen.draw_border(buffer);
 
         let mut title_offset : usize = 0;
         for (index, tab) in self.tabs.iter().enumerate() {
@@ -94,7 +94,7 @@ impl DrawableScreen for MainScreen  {
                    nofg = termion::color::Fg(termion::color::Reset)).unwrap();
             title_offset += title.len() + 1;
             if index == self.current_tab_index {
-                tab.draw(buffer, tab_screen.get_content_rect());
+                tab.draw(buffer, tab_screen.get_full_rect());
             }
         }
         buffer.flush().unwrap();

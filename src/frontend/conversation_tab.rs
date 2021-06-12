@@ -31,8 +31,9 @@ impl ConversationTab {
 
 impl DrawableScreen for ConversationTab {
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        let screen = Screen::new(rect);
-        let mut writer = screen.get_writer();
+        let mut conversation_screen = Screen::new(rect);
+        let details_screen = conversation_screen.split_vertically();
+        let mut writer = conversation_screen.get_content_rect().screen().get_writer();
         for (index, comment) in self.conversation_items.iter().enumerate() {
             writer.set_selection(index == self.selected_conversation);
             writer.write_line(buffer, &comment.author_name);
@@ -40,6 +41,10 @@ impl DrawableScreen for ConversationTab {
             writer.set_selection(false);
             writer.separator(buffer);
         }
+
+        conversation_screen.draw_border(buffer);
+        details_screen.draw_border(buffer);
+
         buffer.flush().unwrap();
     }
 }

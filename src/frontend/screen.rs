@@ -10,6 +10,12 @@ pub struct Rect {
     pub h: u16,
 }
 
+impl Rect {
+    pub fn screen(&self) -> Screen {
+        Screen::new(*self)
+    }
+}
+
 pub trait DrawableScreen {
     fn draw(&self, buffer: &mut dyn Write, rect: Rect);
 }
@@ -71,20 +77,24 @@ impl Screen {
 
     pub fn split_vertically(&mut self) -> Self {
         let left = Rect { x: self.rect.x, y: self.rect.y, h: self.rect.h, w: self.rect.w / 2 };
-        let right = Rect { x: self.rect.x + self.rect.w / 2, y: self.rect.y, h: self.rect.h, w: self.rect.w / 2 };
+        let right = Rect { x: self.rect.x + self.rect.w / 2, y: self.rect.y, h: self.rect.h, w: self.rect.w - left.w };
         self.rect = left;
         Screen::new(right)
     }
 
     pub fn split_horizontally(&mut self) -> Self {
         let top = Rect { x: self.rect.x, y: self.rect.y, h: self.rect.h / 2, w: self.rect.w };
-        let bottom = Rect { x: self.rect.x, y: self.rect.y + self.rect.h / 2, h: self.rect.h / 2, w: self.rect.w };
+        let bottom = Rect { x: self.rect.x, y: self.rect.y + self.rect.h / 2, h: self.rect.h - top.h, w: self.rect.w };
         self.rect = top;
         Screen::new(bottom)
     }
 
     pub fn get_writer(&self) -> ScreenWriter {
         ScreenWriter { rect: self.get_content_rect(), line_index: 0, is_selection: false}
+    }
+
+    pub fn get_full_rect(&self) -> Rect {
+        self.rect
     }
 
     pub fn get_content_rect(&self) -> Rect {
