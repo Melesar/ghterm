@@ -1,6 +1,5 @@
 use std::io::Write;
 use std::sync::mpsc;
-use std::iter::FromIterator;
 
 use crate::backend::pr::{PrConversation, ConversationItem, PrComment};
 

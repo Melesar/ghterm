@@ -22,21 +22,31 @@ pub struct GhClient {
 
 impl GhClient {
     pub fn new(repo_owner: String, repo_name: String) -> Result<Self, std::io::Error> {
-        let queries_map : HashMap<String, String>= fs::read_dir(GhClient::get_requests_directory())?
-            .filter_map(|e| e.ok())
-            .filter_map(|e| match e.file_type() { 
-                Ok(ft) => if ft.is_file() && e.file_name().to_str().unwrap().ends_with(".gql") {
-                    Some(e.path())
-                } else {
-                    None
-                },
-                Err(_) => None
-            })
-            .filter_map(|p| p.file_stem()
-                        .map(|os| os.to_str().map(|s| s.to_string()).unwrap())
-                        .zip(fs::read_to_string(p).ok()))
-            .collect();
+        let queries_map = GhClient::read_queries()?;
         Ok(GhClient {repo_owner, repo_name, queries_map})
+    }
+
+    pub fn validate(&self, pr_num: Option<u32>) -> Result<(), GhError> {
+        let repo = &format!("{}/{}", self.repo_owner, self.repo_name);
+        let mut cmd = Command::new("gh");
+        let error_msg : &str;
+        if let Some(number) = pr_num {
+            cmd.args(&["pr", "view"]);
+            cmd.args(&["-R", repo]);
+            cmd.arg(&number.to_string());
+            error_msg = "Repository not found or pull request number is invalid";
+        } else {
+            cmd.args(&["repo", "view", repo]);
+            error_msg = "Repository not found";
+        }
+        let output = cmd.output()
+            .map_err(|e| GhError {message: e.to_string()})?;
+
+        if output.stderr.len().eq(&0) {
+            Ok(())
+        } else {
+            Err(GhError {message: String::from(error_msg)})
+        }
     }
 
     pub fn pr_list(&self) -> Result<GqlRequest, GhError> {
@@ -64,6 +74,25 @@ impl GhClient {
             .map(|s| s.to_string())
             .ok_or(GhError::new(&format!("Query template {} wasn't found", name)))
     }
+
+    fn read_queries() -> Result<HashMap<String, String>, std::io::Error> {
+        let map : HashMap<String, String> = fs::read_dir(GhClient::get_requests_directory())?
+            .filter_map(|e| e.ok())
+            .filter_map(|e| match e.file_type() { 
+                Ok(ft) => if ft.is_file() && e.file_name().to_str().unwrap().ends_with(".gql") {
+                    Some(e.path())
+                } else {
+                    None
+                },
+                Err(_) => None
+            })
+            .filter_map(|p| p.file_stem()
+                        .map(|os| os.to_str().map(|s| s.to_string()).unwrap())
+                        .zip(fs::read_to_string(p).ok()))
+            .collect();
+        Ok(map)
+    }
+
 
     #[cfg(debug_assertions)]
     fn get_requests_directory() -> String {

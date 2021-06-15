@@ -26,7 +26,7 @@ impl<R: Read, W: Write> App<R, W> {
         App {buff_out, buff_in, gh_client, event_listener, sender}
     }
 
-    pub fn run(mut self) -> Result<(), std::io::Error> {
+    pub fn run(mut self, pr_number: Option<u32>) -> Result<(), std::io::Error> {
         write!(self.buff_out, "{}", termion::cursor::Hide).unwrap(); 
 
         let size = termion::terminal_size().unwrap();
@@ -35,6 +35,10 @@ impl<R: Read, W: Write> App<R, W> {
         let mut task_manager = TaskManager::new();
         let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone(), &mut task_manager, &mut self.gh_client));
         self.sender.send(AppEvent::ScreenRepaint).unwrap();
+        //TODO create the appropriate screen right away
+        if let Some(pr_number) = pr_number {
+            self.sender.send(AppEvent::RepoChosen(pr_number)).unwrap();
+        }
 
         let mut input = self.buff_in.bytes();
         loop {

@@ -25,8 +25,9 @@ impl TaskManager {
         let notify_sender = self.sender.clone();
         let handle = thread::spawn(move || {
             let result = (task)();
-            sender.send(result).unwrap();
-            notify_sender.send(thread::current().id()).unwrap();
+            if let Ok(_) = sender.send(result) {
+                notify_sender.send(thread::current().id()).unwrap();
+            }
         });
         self.tasks.push(handle.thread().id());
         TaskHandle{receiver}
