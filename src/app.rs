@@ -33,12 +33,12 @@ impl<R: Read, W: Write> App<R, W> {
         let rect = Rect{x: 0, y: 0, w: size.0, h: size.1};
 
         let mut task_manager = TaskManager::new();
-        let mut current_screen_handler : Box<dyn ScreenHandler> = Box::new(RepoSelectionHandler::new(self.sender.clone(), &mut task_manager, &mut self.gh_client));
+        let mut current_screen_handler : Box<dyn ScreenHandler> = if let Some(pr_number) = pr_number {
+            Box::new(MainScreenHandler::new(pr_number, self.sender.clone(), &self.gh_client))
+        } else {
+            Box::new(RepoSelectionHandler::new(self.sender.clone(), &mut task_manager, &mut self.gh_client))
+        };
         self.sender.send(AppEvent::ScreenRepaint).unwrap();
-        //TODO create the appropriate screen right away
-        if let Some(pr_number) = pr_number {
-            self.sender.send(AppEvent::RepoChosen(pr_number)).unwrap();
-        }
 
         let mut input = self.buff_in.bytes();
         loop {
