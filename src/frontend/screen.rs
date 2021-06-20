@@ -143,7 +143,7 @@ impl ScreenWriter {
             return;
         }
 
-        let available_width = self.available_width() - 8 * self.indent as u16; //TODO figure out how to determine tab width
+        let available_width = self.available_width() - 8 * self.indent as u16;
         let mut total_characters = message.len();
         let mut characters_written : usize = 0;
         while total_characters > 0 {
