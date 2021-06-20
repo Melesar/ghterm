@@ -90,7 +90,7 @@ impl Screen {
     }
 
     pub fn get_writer(&self) -> ScreenWriter {
-        ScreenWriter { rect: self.get_content_rect(), line_index: 0, is_selection: false}
+        ScreenWriter { rect: self.get_content_rect(), line_index: 0, is_selection: false, indent: 0}
     }
 
     pub fn get_full_rect(&self) -> Rect {
@@ -111,6 +111,7 @@ pub struct ScreenWriter {
     rect: Rect,
     line_index: u16,
     is_selection: bool,
+    indent: usize,
 }
 
 impl ScreenWriter {
@@ -122,8 +123,18 @@ impl ScreenWriter {
         self.rect.x + 2
     }
 
+    fn draw_selection(&self, buffer: &mut dyn Write, y_pos: u16) {
+        write!(buffer, "{}", Goto(self.rect.x, y_pos)).unwrap();
+        if self.is_selection {
+            write!(buffer, "{}", termion::color::Bg(termion::color::White)).unwrap();
+        }
+        write!(buffer, " {}", termion::color::Bg(termion::color::Reset)).unwrap();
+    }
+
     pub fn write_line(&mut self, buffer: &mut dyn Write, message: &str) {
+        let mut y_pos = self.rect.y + self.line_index + 1;
         if message.len() == 0 {
+            self.draw_selection(buffer, y_pos);
             self.line_index += 1;
             return;
         }
@@ -132,11 +143,10 @@ impl ScreenWriter {
             return;
         }
 
-        let available_width = self.available_width();
+        let available_width = self.available_width() - 8 * self.indent as u16; //TODO figure out how to determine tab width
         let mut total_characters = message.len();
         let mut characters_written : usize = 0;
         while total_characters > 0 {
-            let y_pos = self.rect.y + self.line_index + 1;
             let mut to_write = std::cmp::min(available_width as usize, total_characters);
             let mut message_slice = &message[characters_written..(characters_written + to_write)];
             if let Some(idx) = message_slice.char_indices().find(|(_, c)| *c == '\n').map(|(i, _)| i) {
@@ -144,23 +154,22 @@ impl ScreenWriter {
                 to_write = idx + 1;
             }
 
-            write!(buffer, "{}", Goto(self.rect.x, y_pos)).unwrap();
-            if self.is_selection {
-                write!(buffer, "{}", termion::color::Bg(termion::color::White)).unwrap();
-            } else {
-                write!(buffer, "{}", termion::color::Bg(termion::color::Black)).unwrap();
-            }
-            write!(buffer, " {}", termion::color::Bg(termion::color::Reset)).unwrap();
+            self.draw_selection(buffer, y_pos);
             write!(buffer, "{}", Goto(self.left_padding(), y_pos)).unwrap();
-            write!(buffer, "{}", message_slice).unwrap();
+            write!(buffer, "{}{}", &String::from_iter(std::iter::repeat('\t').take(self.indent)), message_slice).unwrap();
             total_characters -= to_write;
             characters_written += to_write;
             self.line_index += 1;
+            y_pos += 1;
         }
     }
 
     pub fn set_selection(&mut self, is_selected: bool) {
         self.is_selection = is_selected;
+    }
+
+    pub fn set_indent(&mut self, indent: usize) {
+        self.indent = indent;
     }
 
     pub fn separator(&mut self, buffer: &mut dyn Write) {

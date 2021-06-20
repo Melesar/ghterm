@@ -9,10 +9,6 @@ pub struct PrHeader {
     pub title: String,
 }
 
-pub struct Pr {
-    pub info: PrInfo,
-} 
-
 #[derive(Debug)]
 pub struct PrInfo {
     pub number: u32,
@@ -46,6 +42,16 @@ pub struct PrReview {
 
 #[derive(Debug)]
 pub enum PrReviewVerdict { Comment, Approve, ChangesRequested }
+
+impl std::fmt::Display for PrReviewVerdict {
+    fn fmt (&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PrReviewVerdict::Comment => write!(f, "COMMENTED"),
+            PrReviewVerdict::Approve => write!(f, "APPROVED"),
+            PrReviewVerdict::ChangesRequested => write!(f, "REQUESTED CHANGES")
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum ConversationItem {
