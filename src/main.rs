@@ -5,6 +5,7 @@ mod logs;
 
 extern crate args;
 extern crate getopts;
+extern crate xdg;
 
 use getopts::Occur;
 
@@ -12,7 +13,7 @@ use std::env::ArgsOs;
 
 use app::App;
 use args::{Args, ArgsError};
-use backend::gh::GhClient;
+use backend::gh::{self, GhClient};
 use termion::raw::IntoRawMode;
 
 #[derive(Debug)]
@@ -38,6 +39,20 @@ fn main() -> Result<(), std::io::Error> {
     if description.value_of("help").map_err(|e| map_args_error(e))? {
         println!("{}", description.full_usage());
         return Ok(());
+    }
+
+    match gh::check_health() {
+        Ok(res) => match res {
+            false => {
+                println!("Authentication on GitHub is required");
+                return Ok(());
+            },
+            true => ()
+        },
+        Err(_) => {
+            println!("Failed to determine the github authentication state");
+            return Ok(());
+        }
     }
 
     let stdout = std::io::stdout();

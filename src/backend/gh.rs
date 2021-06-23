@@ -191,3 +191,38 @@ impl GqlQueryBuilder {
         GqlRequest {cmd}
     }
 }
+
+pub fn check_health() -> Result<bool, ()> {
+   let result = check_gh_installed()? && ensure_authentication()?; 
+   Ok(result)
+}
+
+fn check_gh_installed() -> Result<bool, ()> {
+    Command::new("gh")
+        .status()
+        .map(|exit_code| exit_code.success())
+        .map_err(|_| ())
+}
+
+fn ensure_authentication() -> Result<bool, ()> {
+    let base_dirs = xdg::BaseDirectories::with_prefix("gh").map_err(|_| ())?;
+    let config_file = base_dirs.find_config_file("hosts.yml");
+    match config_file {
+        Some(path) => {
+            let contents = fs::read_to_string(path).unwrap();
+            if contents.contains("github.com") { 
+                Ok(true)
+            } else {
+                authenticate().map_err(|_| ()) 
+            }
+        },
+        None => authenticate().map_err(|_| ()),
+    }
+}
+
+fn authenticate() -> Result<bool, std::io::Error> {
+    Command::new("gh")
+        .args(&["auth", "login"])
+        .status()
+        .map(|exit_code| exit_code.success())
+}
