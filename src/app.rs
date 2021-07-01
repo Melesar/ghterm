@@ -8,6 +8,7 @@ use crate::frontend::repo_selection_handler::RepoSelectionHandler;
 use crate::frontend::main_screen_handler::MainScreenHandler;
 use crate::backend::task::*;
 use crate::backend::gh::GhClient;
+use crate::error::Error;
 
 use events::AppEvent;
 
@@ -26,7 +27,7 @@ impl<R: Read, W: Write> App<R, W> {
         App {buff_out, buff_in, gh_client, event_listener, sender}
     }
 
-    pub fn run(mut self, pr_number: Option<u32>) -> Result<(), std::io::Error> {
+    pub fn run(mut self, pr_number: Option<u32>) -> Result<(), Error> {
         write!(self.buff_out, "{}", termion::cursor::Hide).unwrap(); 
 
         let size = termion::terminal_size().unwrap();

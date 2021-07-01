@@ -3,6 +3,7 @@ use crate::app::events::AppEvent;
 use crate::backend::task::*;
 use crate::backend::pr;
 use crate::backend::gh::*;
+use crate::error::Error;
 
 use super::screen::{Rect, ApplicationScreen, DrawableScreen, InteractableScreen, ScreenHandler};
 use super::main_screen::MainScreen;
@@ -17,7 +18,7 @@ pub enum MainScreenEvent {
 pub struct MainScreenHandler<'a> {
     screen: MainScreen,
     app_events_sender: mpsc::Sender<AppEvent>,
-    conversation_task: TaskHandle<Result<JsonValue, GhError>>,
+    conversation_task: TaskHandle<Result<JsonValue, Error>>,
     task_manager: TaskManager,
     client: &'a GhClient,
     screen_events_receiver: mpsc::Receiver<MainScreenEvent>,
@@ -59,7 +60,7 @@ impl<'a> ScreenHandler for MainScreenHandler<'a> {
                     let conversation = pr::parse_conversation(json);
                     self.screen.set_conversation(conversation);
                 },
-                Err(error) => self.app_events_sender.send(AppEvent::Error(error.message)).unwrap()
+                Err(error) => self.app_events_sender.send(AppEvent::Error(error.to_string())).unwrap()
             }
         }
     }

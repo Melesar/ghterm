@@ -2,17 +2,7 @@ use std::collections::HashMap;
 use std::process::Command;
 use json::{self, JsonValue};
 use std::fs;
-
-#[derive(Debug)]
-pub struct GhError {
-    pub message: String
-}
-
-impl GhError {
-    fn new(message: &str) -> Self {
-        GhError {message: message.to_string() }
-    }
-}
+use crate::error::Error;
 
 pub struct GhClient {
     repo_owner: String,
@@ -21,35 +11,37 @@ pub struct GhClient {
 }
 
 impl GhClient {
-    pub fn new(repo_owner: String, repo_name: String) -> Result<Self, std::io::Error> {
-        let queries_map = GhClient::read_queries()?;
+    pub fn new(repo_owner: String, repo_name: String) -> Result<Self, Error> {
+        let queries_map = GhClient::read_queries()
+            .map_err(|_| Error::Other("Failed to read queries files. Make sure you have installed ghterm correctly".to_string()))?;
+
         Ok(GhClient {repo_owner, repo_name, queries_map})
     }
 
-    pub fn validate(&self, pr_num: Option<u32>) -> Result<(), GhError> {
+    pub fn validate(&self, pr_num: Option<u32>) -> Result<(), Error> {
         let repo = &format!("{}/{}", self.repo_owner, self.repo_name);
         let mut cmd = Command::new("gh");
-        let error_msg : &str;
+        let error : Error;
         if let Some(number) = pr_num {
             cmd.args(&["pr", "view"]);
             cmd.args(&["-R", repo]);
             cmd.arg(&number.to_string());
-            error_msg = "Repository not found or pull request number is invalid";
+            error = Error::PrDoesntExist(repo.to_string(), number);
         } else {
             cmd.args(&["repo", "view", repo]);
-            error_msg = "Repository not found";
+            error = Error::NotARepo(repo.to_string());
         }
         let output = cmd.output()
-            .map_err(|e| GhError {message: e.to_string()})?;
+            .map_err(|e| Error::Other(e.to_string()))?;
 
         if output.stderr.len().eq(&0) {
             Ok(())
         } else {
-            Err(GhError {message: String::from(error_msg)})
+            Err(error)
         }
     }
 
-    pub fn pr_list(&self) -> Result<GqlRequest, GhError> {
+    pub fn pr_list(&self) -> Result<GqlRequest, Error> {
         let query = self.get_query("pr_list")?;
         let request = GqlQueryBuilder::new()
             .set_repo(self.repo_owner.clone(), self.repo_name.clone())
@@ -58,7 +50,7 @@ impl GhClient {
         Ok(request)
     }
     
-    pub fn pr_conversation(&self, number: u32) -> Result<GqlRequest, GhError> {
+    pub fn pr_conversation(&self, number: u32) -> Result<GqlRequest, Error> {
         let query = self.get_query("pr_conversation")?;
         let request = GqlQueryBuilder::new()
             .set_repo(self.repo_owner.clone(), self.repo_name.clone())
@@ -68,11 +60,11 @@ impl GhClient {
         Ok(request)
     }
 
-    fn get_query(&self, name: &str) -> Result<String, GhError> {
+    fn get_query(&self, name: &str) -> Result<String, Error> {
         self.queries_map
             .get(name)
             .map(|s| s.to_string())
-            .ok_or(GhError::new(&format!("Query template {} wasn't found", name)))
+            .ok_or(Error::Other(format!("Query template {} wasn't found", name)))
     }
 
     fn read_queries() -> Result<HashMap<String, String>, std::io::Error> {
@@ -112,16 +104,16 @@ pub struct GqlRequest {
 }
 
 impl GqlRequest {
-    pub fn execute(&mut self) -> Result<JsonValue, GhError> {
-        let output = self.cmd.output().map_err(|e| GhError::new(&e.to_string()))?;
+    pub fn execute(&mut self) -> Result<JsonValue, Error> {
+        let output = self.cmd.output().map_err(|e| Error::Other(e.to_string()))?;
         crate::logs::log(&format!("{:?}", output));
         if !output.status.success() {
-            return Err(GhError::new(&String::from_utf8(output.stderr).unwrap()));
+            return Err(Error::Other(String::from_utf8(output.stderr).unwrap()));
         }
 
         let output = String::from_utf8(output.stdout).unwrap();
         json::parse(&output).map_err(|e| {
-            GhError::new(&format!("Got malformed json: {}", e.to_string()))
+            Error::Other(format!("Got malformed json: {}", e.to_string()))
         })
     }
 }
@@ -192,20 +184,22 @@ impl GqlQueryBuilder {
     }
 }
 
-pub fn check_health() -> Result<bool, ()> {
+pub fn check_health() -> Result<bool, Error> {
    let result = check_gh_installed()? && ensure_authentication()?; 
    Ok(result)
 }
 
-fn check_gh_installed() -> Result<bool, ()> {
+fn check_gh_installed() -> Result<bool, Error> {
     Command::new("gh")
         .status()
         .map(|exit_code| exit_code.success())
-        .map_err(|_| ())
+        .map_err(|_| Error::GhNotInstalled)
 }
 
-fn ensure_authentication() -> Result<bool, ()> {
-    let base_dirs = xdg::BaseDirectories::with_prefix("gh").map_err(|_| ())?;
+fn ensure_authentication() -> Result<bool, Error> {
+    let base_dirs = xdg::BaseDirectories::with_prefix("gh")
+        .map_err(|_| Error::Other("Didn't find gh config directory".to_string()))?;
+
     let config_file = base_dirs.find_config_file("hosts.yml");
     match config_file {
         Some(path) => {
@@ -213,10 +207,10 @@ fn ensure_authentication() -> Result<bool, ()> {
             if contents.contains("github.com") { 
                 Ok(true)
             } else {
-                authenticate().map_err(|_| ()) 
+                authenticate().map_err(|e| Error::Other(e.to_string()))
             }
         },
-        None => authenticate().map_err(|_| ()),
+        None => authenticate().map_err(|e| Error::Other(e.to_string()))
     }
 }
 
