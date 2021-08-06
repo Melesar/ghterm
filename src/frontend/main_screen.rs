@@ -12,12 +12,12 @@ use std::fmt::{Display, Formatter, Error};
 use super::screen::{DrawableScreen, InteractableScreen};
 use super::conversation_tab::ConversationTab;
 
-pub enum MainScreenTab { 
-    Conversation(ConversationTab),
+pub enum MainScreenTab<'a> { 
+    Conversation(ConversationTab<'a>),
     Timeline 
 }
 
-impl Display for MainScreenTab {
+impl<'a> Display for MainScreenTab<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let label = match self {
             MainScreenTab::Conversation(_) => "Conversation",
@@ -28,7 +28,7 @@ impl Display for MainScreenTab {
     }
 }
 
-impl DrawableScreen for MainScreenTab {
+impl<'a> DrawableScreen for MainScreenTab<'a> {
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
         match self {
             MainScreenTab::Conversation(ct) => ct.draw(buffer, rect),
@@ -37,7 +37,7 @@ impl DrawableScreen for MainScreenTab {
     }
 }
 
-impl InteractableScreen for MainScreenTab { 
+impl<'a> InteractableScreen for MainScreenTab<'a> { 
     fn validate_input(&self, input: u8) -> bool {
         match self {
             MainScreenTab::Conversation(ct) => ct.validate_input(input),
@@ -53,13 +53,13 @@ impl InteractableScreen for MainScreenTab {
     }
 }
 
-pub struct MainScreen  {
-    tabs: Vec<MainScreenTab>,
+pub struct MainScreen<'a>  {
+    tabs: Vec<MainScreenTab<'a>>,
     current_tab_index: usize,
     app_event_sender: mpsc::Sender<AppEvent>,
 }
 
-impl MainScreen {
+impl<'a> MainScreen<'a> {
     pub fn new (app_event_sender: mpsc::Sender<AppEvent>, screen_event_sender: mpsc::Sender<MainScreenEvent>) -> Self {
         let tabs = vec![
             MainScreenTab::Conversation(ConversationTab::new(screen_event_sender.clone())),
@@ -75,7 +75,7 @@ impl MainScreen {
     }
 }
 
-impl DrawableScreen for MainScreen  {
+impl<'a> DrawableScreen for MainScreen<'a> {
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
         let screen_rect = Rect {y: rect.y + 1, h: rect.h - 1, ..rect};
         let tab_screen = Screen::new(screen_rect);
@@ -101,7 +101,7 @@ impl DrawableScreen for MainScreen  {
     }
 }
 
-impl InteractableScreen for MainScreen  {
+impl<'a> InteractableScreen for MainScreen<'a> {
     fn validate_input(&self, input: u8) -> bool {
         self.tabs[self.current_tab_index].validate_input(input)
     }

@@ -16,7 +16,7 @@ pub enum MainScreenEvent {
 }
 
 pub struct MainScreenHandler<'a> {
-    screen: MainScreen,
+    screen: MainScreen<'a>,
     app_events_sender: mpsc::Sender<AppEvent>,
     conversation_task: TaskHandle<Result<JsonValue, Error>>,
     task_manager: TaskManager,

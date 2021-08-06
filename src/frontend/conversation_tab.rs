@@ -28,7 +28,9 @@ impl<'a> ConversationTab<'a> {
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
         self.conversation = Some(conversation);
-        self.current_view = View::Conversation(&conversation.items);
+        if let Some(conv) = self.conversation.as_ref() {
+            self.current_view = View::Conversation(&conv.items);
+        }
     }
 
     fn write_review(writer: &mut ScreenWriter, buffer: &mut dyn Write, review: &PrReview) {
@@ -63,10 +65,37 @@ impl<'a> ConversationTab<'a> {
 
     fn move_horizontally(&mut self, offset: i32) {
         match self.current_view {
+
             View::None => (),
+
             View::Conversation(items) => {
-                
+                if offset <= 0 { () }
+
+                if let Some(item) = items.get(self.selected_conversation) {
+                    if let ConversationItem::Review(review) = item {
+                        let threads = &review.threads;
+
+                        if threads.is_empty() { () }
+
+                        self.current_view = View::Thread(threads);
+                        self.selected_thread = 0;
+                    }
+                }
             },
+
+            View::Thread(threads) => {
+                if offset < 0 {
+                    self.selected_thread = -1;
+                    //self.current_view = View::Conversation();
+                } else if offset > 0 {
+                    if let Some(thread) = threads.get(self.selected_thread as usize) {
+                        
+                    }
+                }
+            },
+            View::Comment(comments) => {
+
+            }
         }
     }
 
