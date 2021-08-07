@@ -1,36 +1,32 @@
+mod conversation_data;
+
 use std::io::Write;
 use std::sync::mpsc;
 
-use crate::backend::pr::{ConversationItem, PrComment, PrConversation, PrReview, PrConversationThread};
+use conversation_data::ConversationData;
+use crate::backend::pr::{ ConversationItem, PrComment, PrConversation, PrReview };
 
 use super::main_screen_handler::MainScreenEvent;
 use super::screen::*;
 
-enum View<'a> {
-    None,
-    Conversation(&'a Vec<ConversationItem>),
-    Thread(&'a Vec<PrConversationThread>),
-    Comment(&'a Vec<PrComment>),
-}
+struct DummyConversation;
 
-pub struct ConversationTab<'a>  {
+pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
-    conversation: Option<PrConversation>,
+    conversation: Box<dyn ConversationData>,
     selected_conversation: usize,
-    selected_thread: i32,
-    current_view: View<'a>,
+    selected_thread: Option<usize>,
+    selected_comment: Option<usize>,
 }
 
-impl<'a> ConversationTab<'a> {
+impl ConversationTab {
     pub fn new (screen_event_sender: mpsc::Sender<MainScreenEvent>) -> Self {
-        ConversationTab { screen_event_sender, conversation: None, selected_conversation: 0, selected_thread: -1, current_view: View::None }
+        let conversation = Box::new(DummyConversation{});
+        ConversationTab { screen_event_sender, conversation, selected_conversation: 0, selected_thread: None, selected_comment: None }
     }
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
-        self.conversation = Some(conversation);
-        if let Some(conv) = self.conversation.as_ref() {
-            self.current_view = View::Conversation(&conv.items);
-        }
+        self.conversation = Box::new(conversation);
     }
 
     fn write_review(writer: &mut ScreenWriter, buffer: &mut dyn Write, review: &PrReview) {
@@ -62,75 +58,17 @@ impl<'a> ConversationTab<'a> {
             writer.separator(buffer);
         }
     }
-
-    fn move_horizontally(&mut self, offset: i32) {
-        match self.current_view {
-
-            View::None => (),
-
-            View::Conversation(items) => {
-                if offset <= 0 { () }
-
-                if let Some(item) = items.get(self.selected_conversation) {
-                    if let ConversationItem::Review(review) = item {
-                        let threads = &review.threads;
-
-                        if threads.is_empty() { () }
-
-                        self.current_view = View::Thread(threads);
-                        self.selected_thread = 0;
-                    }
-                }
-            },
-
-            View::Thread(threads) => {
-                if offset < 0 {
-                    self.selected_thread = -1;
-                    //self.current_view = View::Conversation();
-                } else if offset > 0 {
-                    if let Some(thread) = threads.get(self.selected_thread as usize) {
-                        
-                    }
-                }
-            },
-            View::Comment(comments) => {
-
-            }
-        }
-    }
-
-    fn move_vertically(&mut self, offset: i32) {
-        match self.current_view {
-            View::Conversation(items) => {
-                let mut current_index = self.selected_conversation as i32;
-                current_index = (current_index + offset).max(0).min((items.len() - 1) as i32);
-                self.selected_conversation = current_index as usize;
-                self.selected_thread = -1;
-            },
-            View::Thread(threads) => {
-            },
-            _ => (),
-        }
-    }
 }
 
-impl<'a> DrawableScreen for ConversationTab<'a> {
+impl DrawableScreen for ConversationTab {
 
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        if let None = &self.conversation {
-            return;
-        }
-        
-        let conversation = self.conversation.as_ref().unwrap();
-        if let None = conversation.items.get(self.selected_conversation) {
-            return;
-        }
-
-        let selected_conversation = conversation.items.get(self.selected_conversation).unwrap();
         let conversation_screen = rect.screen();
         let mut writer = conversation_screen.get_content_rect().screen().get_writer();
 
-        match self.current_view {
+        self.conversation.draw(&mut writer, buffer, self.selected_conversation, self.selected_thread, self.selected_comment);
+
+        /*match self.current_view {
             View::Conversation(items) => {
                 ConversationTab::write_items(&mut writer, buffer, self.selected_conversation as i32, &mut items.iter(), |item, writer, buffer| {
                     match item {
@@ -150,16 +88,16 @@ impl<'a> DrawableScreen for ConversationTab<'a> {
                 });
             },
             View::None => (),
-        }
+        }*/
 
         conversation_screen.draw_border(buffer);
         buffer.flush().unwrap();
     }
 }
 
-impl<'a> InteractableScreen for ConversationTab<'a> {
+impl InteractableScreen for ConversationTab {
     fn validate_input(&self, input: u8) -> bool {
-        self.conversation.is_some() && (input == b'j' || input == b'k' || input == b'h' || input == b'l')
+        input == b'j' || input == b'k' || input == b'h' || input == b'l'
     }
 
     fn process_input(&mut self, input: u8) {
@@ -174,11 +112,14 @@ impl<'a> InteractableScreen for ConversationTab<'a> {
             _ => 0,
         };
 
-
-        self.move_vertically(vertical_offset);
-        self.move_horizontally(horizontal_offset);
+        self.conversation.try_move(horizontal_offset, vertical_offset, &mut self.selected_conversation, &mut self.selected_thread, &mut self.selected_comment);
     }
 }
 
-impl<'a> ApplicationScreen for ConversationTab<'a> {
+impl ApplicationScreen for ConversationTab {
+}
+
+impl ConversationData for DummyConversation {
+    fn draw(&self, _: &mut ScreenWriter, _: &mut dyn Write, _: usize, _: Option<usize>, _: Option<usize>) { }
+    fn try_move(&self, _: i32, _: i32, _: &mut usize, _: &mut Option<usize>, _: &mut Option<usize>) { }
 }
