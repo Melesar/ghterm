@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::backend::pr::{PrConversation, ConversationItem, PrReview, PrComment, PrConversationThread}; 
+use crate::backend::pr::{PrConversation, ConversationItem, PrReview, PrComment}; 
 use crate::frontend::screen::ScreenWriter;
 
 pub trait ConversationData {
@@ -10,25 +10,34 @@ pub trait ConversationData {
 
 impl ConversationData for PrConversation {
 
-    //TODO implement comments drawing
     fn draw(&self, writer: &mut ScreenWriter, buffer: &mut dyn Write, conversation_idx: usize, thread_index: Option<usize>, comment_index: Option<usize>) {
-        
-        let item = self.items.get(conversation_idx);
-        if item.is_none() { return; }
 
-        let item = item.unwrap();
-        match item {
-            ConversationItem::Review(review) => {
-                if thread_index.is_none() {
-                    write_review(writer, buffer, review);
-                } else if review.threads.len() > 0 {
-                    draw_threads(writer, buffer, &review.threads);
+        if let Some(comment) = comment_index {
+
+            if let ConversationItem::Review(review) = self.items.get(conversation_idx).unwrap() {
+                if let Some(t) = review.threads.get(thread_index.unwrap()) {
+                    write_items(writer, buffer, comment, &mut t.comments.iter(), |item, writer, buffer| {
+                        write_comment(writer, buffer, item);
+                    });
                 }
-            },
-
-            ConversationItem::Comment(comment) => {
-                write_comment(writer, buffer, comment);
             }
+
+        } else if let Some(thread) = thread_index {
+
+            if let ConversationItem::Review(review) = self.items.get(conversation_idx).unwrap() {
+                write_items(writer, buffer, thread, &mut review.threads.iter(), |item, writer, buffer| {
+                    write_comment(writer, buffer, item.comments.get(0).unwrap());
+                });
+            }
+
+        } else {
+
+            write_items(writer, buffer, conversation_idx, &mut self.items.iter(), |item, writer, buffer| {
+                match item {
+                    ConversationItem::Review(r) => write_review(writer, buffer, r),
+                    ConversationItem::Comment(c) => write_comment(writer, buffer, c),
+                }
+            });
         }
     }
 
@@ -63,10 +72,6 @@ impl ConversationData for PrConversation {
     }
 }
 
-fn draw_threads(writer: &mut ScreenWriter, buffer: &mut dyn Write, threads: &Vec<PrConversationThread>) {
-    
-}
-
 fn write_review(writer: &mut ScreenWriter, buffer: &mut dyn Write, review: &PrReview) {
     writer.write_line(buffer, &format!("[R] {}\t{}", review.review_comment.author_name, review.verdict));
     if review.review_comment.body.len() > 0 {
@@ -87,12 +92,21 @@ fn write_comment(writer: &mut ScreenWriter, buffer: &mut dyn Write, comment: &Pr
     writer.write_line(buffer, &comment.body);
 }
 
+fn write_items<T, F>(writer: &mut ScreenWriter, buffer: &mut dyn Write, selected_item: usize, iter: &mut dyn Iterator<Item = T>, func: F) 
+    where F : Fn(T, &mut ScreenWriter, &mut dyn Write) {
+    for (index, item) in iter.enumerate() {
+        writer.set_selection(index == selected_item);
+        func(item, writer, buffer);
+        writer.set_selection(false);
+        writer.separator(buffer);
+    }
+}
+
 fn try_move_vertically(items_count: usize, offset: i32, index: &mut usize) {
     let mut index_tmp = *index as i32;
     index_tmp = (index_tmp + offset).max(0).min((items_count - 1) as i32);
     *index = index_tmp as usize;
 }
-
 
 fn try_move_horizontally(offset: i32, conversation: &ConversationItem, thread_idx: &mut Option<usize>, comment_idx: &mut Option<usize>) {
     if offset < 0 {
