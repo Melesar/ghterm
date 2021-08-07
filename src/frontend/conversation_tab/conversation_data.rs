@@ -118,3 +118,303 @@ fn try_move_horizontally(offset: i32, conversation: &ConversationItem, thread_id
     }
 }
 
+#[cfg(test)]
+mod tests {
+
+    use chrono::Local;
+
+    use crate::backend::pr;
+    use super::*;
+
+    #[test]
+    fn going_right_from_review_brings_to_threads() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 1])
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(0));
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_right_from_review_comment_does_nothing() {
+        let conversation = pr::PrConversation { items: vec![
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_right_from_threads_brings_to_comments() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2])
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(2);
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(2));
+        assert_eq!(comment_idx, Some(0));
+    }
+
+    #[test]
+    fn going_right_from_comments_does_nothing() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2])
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(2);
+        let mut comment_idx = Some(1);
+
+        conversation.try_move(1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(2));
+        assert_eq!(comment_idx, Some(1));
+    }
+
+    #[test]
+    fn going_left_from_reviews_does_nothing() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2])
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(-1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_left_from_threads_brings_to_reviews() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2])
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(2);
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(-1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_left_from_comments_brings_to_threads() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2])
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(2);
+        let mut comment_idx = Some(0); 
+
+        conversation.try_move(-1, 0, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(2));
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_down_in_reviews_scrolls_down() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(0, 1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 1);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_up_in_reviews_scrolls_up() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 1;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(0, -1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_up_from_the_first_element_does_nothing() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(0, -1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_down_from_the_last_element_does_nothing() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 2;
+        let mut thread_idx : Option<usize> = None;
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(0, 1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 2);
+        assert_eq!(thread_idx, None);
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_down_in_threads_scrolls_down() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(0);
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(0, 1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(1));
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_up_in_threads_scrolls_up() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(2);
+        let mut comment_idx : Option<usize> = None;
+
+        conversation.try_move(0, -1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(1));
+        assert_eq!(comment_idx, None);
+    }
+
+    #[test]
+    fn going_down_in_comments_scrolls_down() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(0);
+        let mut comment_idx = Some(0);
+
+        conversation.try_move(0, 1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(0));
+        assert_eq!(comment_idx, Some(1));
+    }
+
+    #[test]
+    fn going_up_in_comments_scrolls_up() {
+        let conversation = pr::PrConversation { items: vec![
+            review(&[3, 1, 2]),
+            review_comment(),
+            review_comment(),
+        ]};
+
+        let mut conversation_idx = 0;
+        let mut thread_idx = Some(2);
+        let mut comment_idx = Some(1);
+
+        conversation.try_move(0, -1, &mut conversation_idx, &mut thread_idx, &mut comment_idx);
+
+        assert_eq!(conversation_idx, 0);
+        assert_eq!(thread_idx, Some(2));
+        assert_eq!(comment_idx, Some(0));
+    }
+
+    fn review(comments_sizes: &[usize]) -> pr::ConversationItem {
+        let threads = comments_sizes
+            .iter()
+            .map(|size| std::iter::repeat(comment()).take(*size).collect::<Vec<pr::PrComment>>())
+            .map(|comments| pr::PrConversationThread { comments });
+
+        pr::ConversationItem::Review(pr::PrReview { 
+            review_comment: comment(),
+            verdict: pr::PrReviewVerdict::Comment,
+            threads: threads.collect()
+        })
+    }
+
+    fn review_comment() -> pr::ConversationItem {
+        pr::ConversationItem::Comment(comment())
+    }
+
+    fn comment() -> pr::PrComment {
+        pr::PrComment { id: String::new(), body: String::new(), author_name: String::new(), timestamp: Local::now() }
+    }
+}
