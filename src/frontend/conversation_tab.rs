@@ -13,7 +13,7 @@ struct DummyConversation;
 
 pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
-    conversation: Box<dyn ConversationData>,
+    conversation: Option<PrConversation>,
     selected_conversation: usize,
     selected_thread: Option<usize>,
     selected_comment: Option<usize>,
@@ -21,25 +21,46 @@ pub struct ConversationTab {
 
 impl ConversationTab {
     pub fn new (screen_event_sender: mpsc::Sender<MainScreenEvent>) -> Self {
-        let conversation = Box::new(DummyConversation{});
-        ConversationTab { screen_event_sender, conversation, selected_conversation: 0, selected_thread: None, selected_comment: None }
+        ConversationTab { screen_event_sender, conversation: None, selected_conversation: 0, selected_thread: None, selected_comment: None }
     }
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
-        self.conversation = Box::new(conversation);
+        self.conversation = Some(conversation);
     }
 }
 
 impl DrawableScreen for ConversationTab {
 
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        let conversation_screen = rect.screen();
-        let mut writer = conversation_screen.get_content_rect().screen().get_writer();
+        let mut leftPart = rect.screen();
+        let rightPart = leftPart.split_vertically();
+        let mut writer = leftPart.get_content_rect().screen().get_writer();
 
-        write!(buffer, "{}", termion::clear::All);
-        self.conversation.draw(&mut writer, buffer, self.selected_conversation, self.selected_thread, self.selected_comment);
+        write!(buffer, "{}", termion::clear::All).unwrap();
 
-        conversation_screen.draw_border(buffer);
+       if self.conversation.is_none() {
+           return;
+       }
+
+        let conversation = self.conversation.as_ref().unwrap();
+        for item in conversation.items.iter() {
+            match item {
+                ConversationItem::Review(review) => {
+                    writer.write_line_truncated(buffer, &format!("{} {}", review.review_comment.author_name, review.verdict));
+                    writer.set_indent(1);
+                    for thread in review.threads.iter() {
+                        writer.write_line_truncated(buffer, &format!("{}", thread.comments[0].body));
+                    }
+                    writer.set_indent(0);
+                },
+                ConversationItem::Comment(comment) => {
+                    writer.write_line(buffer, &format!("{} commented", comment.author_name));
+                }
+            }
+        }
+
+        leftPart.draw_border(buffer);
+        rightPart.draw_border(buffer);
         buffer.flush().unwrap();
     }
 }
@@ -61,7 +82,6 @@ impl InteractableScreen for ConversationTab {
             _ => 0,
         };
 
-        self.conversation.try_move(horizontal_offset, vertical_offset, &mut self.selected_conversation, &mut self.selected_thread, &mut self.selected_comment);
     }
 }
 

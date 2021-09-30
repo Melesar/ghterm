@@ -164,6 +164,34 @@ impl ScreenWriter {
         }
     }
 
+    pub fn write_line_truncated(&mut self, buffer: &mut dyn Write, message: &str) {
+
+        let y_pos = self.rect.y + self.line_index + 1;
+        if message.len() == 0 {
+            self.draw_selection(buffer, y_pos);
+            self.line_index += 1;
+            return;
+        }
+
+        if self.rect.h <= self.line_index {
+            return;
+        }
+
+        let available_width = self.available_width() - 8 * self.indent as u16;
+        let total_characters = message.len();
+        let to_write = std::cmp::min(available_width as usize, total_characters);
+        let mut message_slice = &message[0..to_write];
+
+        if let Some(idx) = message_slice.char_indices().find(|(_, c)| *c == '\n').map(|(i, _)| i) {
+            message_slice = &message_slice[0..idx];
+        }
+
+        self.draw_selection(buffer, y_pos);
+        write!(buffer, "{}", Goto(self.left_padding(), y_pos)).unwrap();
+        write!(buffer, "{}{}", &String::from_iter(std::iter::repeat('\t').take(self.indent)), message_slice).unwrap();
+        self.line_index += 1;
+    }
+
     pub fn set_selection(&mut self, is_selected: bool) {
         self.is_selection = is_selected;
     }
