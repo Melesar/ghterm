@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use json::{self, JsonValue};
 use std::fs;
 use crate::error::Error;
@@ -191,6 +191,7 @@ pub fn check_health() -> Result<bool, Error> {
 
 fn check_gh_installed() -> Result<bool, Error> {
     Command::new("gh")
+        .stdout(Stdio::null())
         .status()
         .map(|exit_code| exit_code.success())
         .map_err(|_| Error::GhNotInstalled)
