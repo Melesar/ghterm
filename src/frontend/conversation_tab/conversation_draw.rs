@@ -12,9 +12,6 @@ impl ConversationDraw for PrReview {
         let symbol = if has_threads && is_expanded { "▼" } else if has_threads { "▶" } else { " " };
 
         writer.write_line_truncated(buffer, &format!("{} {} {}", symbol, self.review_comment.author_name, self.verdict));
-        if !has_threads {
-            writer.write_line(buffer, "");
-        }
     }
 }
 

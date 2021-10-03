@@ -12,7 +12,6 @@ pub struct ConversationTree {
 
 struct ConversationTreeNode {
     data: ConversationTreeItem,
-    is_selected: bool,
     is_expanded: bool,
 
     next: Option<usize>,
@@ -40,8 +39,7 @@ impl ConversationTree {
                         parent: None,
                         child: if r.threads.len() > 0 { Some(nodes.len() + 1) } else { None },
 
-                        is_selected: index == 0,
-                        is_expanded: true,
+                        is_expanded: r.threads.len() > 0,
                     };
 
                     let review_node_index = nodes.len();
@@ -52,15 +50,13 @@ impl ConversationTree {
                         let thread_node = ConversationTreeNode {
                             data: ConversationTreeItem(index, Some(thread_index)),
                             next: if thread_index != r.threads.len() - 1 { Some(nodes.len() + 1) } else { None },
-                            previous,
+                            previous: Some(nodes.len() - 1),
                             parent: Some(review_node_index),
                             child: None,
 
-                            is_selected: false,
                             is_expanded: false,
                         };
                         nodes.push(thread_node);
-                        previous = Some(nodes.len() - 1);
                     }
                 },
 
@@ -72,7 +68,6 @@ impl ConversationTree {
                         parent: None,
                         child: None,
 
-                        is_selected: index == 0,
                         is_expanded: false,
                     };
 
@@ -85,8 +80,42 @@ impl ConversationTree {
         ConversationTree { conversation, nodes, selected_node: 0 }
     }
 
-    pub fn move_selection (&self, forward: bool) {
+    pub fn move_selection (&mut self, forward: bool) {
+        let selected_node = self.nodes.get(self.selected_node);
+        if selected_node.is_none() {
+            return;
+        }
 
+        let selected_node = selected_node.unwrap();
+        self.selected_node = if forward {
+            if selected_node.is_expanded {
+                self.selected_node + 1
+            } else if let Some(next_index) = selected_node.next {
+                next_index
+            } else if let Some(_) = selected_node.child { //The last review in the list and not expanded. Don't move
+                self.selected_node
+            } else {
+                if self.nodes.len() > self.selected_node + 1 { self.selected_node + 1 } else { self.selected_node }
+            }
+        } else {
+            if_chain! {
+                if let Some(previous_index) = selected_node.previous;
+                if let Some(previous_node) = self.nodes.get(previous_index);
+                if let Some(_) = previous_node.child;
+                if !previous_node.is_expanded;
+                then {
+                    previous_index
+                } else {
+                    if self.selected_node > 0 { self.selected_node - 1 } else { self.selected_node }
+                }
+            }
+        }
+    }
+
+    pub fn toggle_expansion(&mut self) {
+        if let Some(node) = self.nodes.get_mut(self.selected_node) {
+            node.is_expanded = node.child.is_some() && !node.is_expanded;
+        }
     }
 
     pub fn draw (&self, buffer: &mut dyn Write, writer: &mut ScreenWriter) {
@@ -99,20 +128,25 @@ impl ConversationTree {
             draw.draw(buffer, writer, current_node.is_expanded);
             writer.set_selection(false);
 
-            if let Some(child_index) = current_node.child {
-                node_index = child_index;
+            node_index = if let Some(child_index) = current_node.child {
+                if current_node.is_expanded {
+                    child_index
+                } else if let Some(next_index) = current_node.next {
+                    next_index
+                } else {
+                    self.nodes.len()
+                }
             } else if let Some(next_index) = current_node.next {
-                node_index = next_index;
+                next_index
             } else { 
                 if_chain! {
                     if let Some(parent_index) = current_node.parent;
                     if let Some(next_sibling_node) = self.nodes.get(parent_index);
                     if let Some(next_sibling_index) = next_sibling_node.next;
                     then {
-                            node_index = next_sibling_index;
-                            writer.write_line(buffer, "");
+                            next_sibling_index
                     } else {
-                            node_index = self.nodes.len();
+                            self.nodes.len()
                     }
                 } 
             }

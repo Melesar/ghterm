@@ -46,7 +46,9 @@ impl DrawableScreen for ConversationTab {
 
 impl InteractableScreen for ConversationTab {
     fn validate_input(&self, input: u8) -> bool {
-        input == b'j' || input == b'k' || input == b'h' || input == b'l'
+        self.conversation_tree.is_some() &&
+            (input == b'j' || input == b'k' || input == b'h' || input == b'l' ||
+             input == b' ')
     }
 
     fn process_input(&mut self, input: u8) {
@@ -60,7 +62,14 @@ impl InteractableScreen for ConversationTab {
             b'l' => 1,
             _ => 0,
         };
-
+        
+        let tree = self.conversation_tree.as_mut().unwrap();
+        if input == b' ' {
+            tree.toggle_expansion();
+        }
+        else if vertical_offset != 0 {
+            tree.move_selection(vertical_offset > 0);
+        } 
     }
 }
 
