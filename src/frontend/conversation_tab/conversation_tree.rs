@@ -1,7 +1,7 @@
 use crate::backend::pr::*;
 use std::io::Write;
-use crate::frontend::screen::ScreenWriter;
-use super::conversation_draw::ConversationDraw;
+use crate::frontend::screen::{ScreenWriter, Screen};
+use super::conversation_draw::{TreeDraw, ContentDraw};
 use if_chain::if_chain;
 
 pub struct ConversationTree {
@@ -118,10 +118,10 @@ impl ConversationTree {
         }
     }
 
-    pub fn draw (&self, buffer: &mut dyn Write, writer: &mut ScreenWriter) {
+    pub fn draw_tree (&self, buffer: &mut dyn Write, writer: &mut ScreenWriter) {
         let mut node_index = 0;
         while let Some(current_node) = self.nodes.get(node_index) {
-            let draw = self.get_draw(&current_node.data);
+            let draw = self.get_tree_draw(&current_node.data);
             let is_selected = node_index == self.selected_node;
 
             writer.set_selection(is_selected);
@@ -153,9 +153,33 @@ impl ConversationTree {
         }
     }
 
-    fn get_draw<'a>(&'a self, index: &ConversationTreeItem) -> &'a dyn ConversationDraw {
+    pub fn draw_selected_item(&self, buffer: &mut dyn Write, screen: &mut Screen) {
+        if let Some(selected_node) = self.nodes.get(self.selected_node) {
+            self.get_content_draw(&selected_node.data).draw(buffer, screen);
+        }
+    }
+
+    //TODO figure out how to reuse code in these two methods
+    fn get_tree_draw<'a>(&'a self, index: &ConversationTreeItem) -> &'a dyn TreeDraw {
         let (conversation_index, thread_index) = (index.0, index.1);
         let conversation_item = self.conversation.items.get(conversation_index).unwrap();
+
+        match conversation_item {
+            ConversationItem::Review(r) => {
+                if let Some(thread_index) = thread_index {
+                    r.threads.get(thread_index).unwrap()
+                } else {
+                    r
+                }
+            },
+            ConversationItem::Comment(c) => c,
+        }
+    }
+
+    fn get_content_draw<'a>(&'a self, index: &ConversationTreeItem) -> &'a dyn ContentDraw {
+        let (conversation_index, thread_index) = (index.0, index.1);
+        let conversation_item = self.conversation.items.get(conversation_index).unwrap();
+
         match conversation_item {
             ConversationItem::Review(r) => {
                 if let Some(thread_index) = thread_index {

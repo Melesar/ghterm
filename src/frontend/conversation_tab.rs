@@ -29,17 +29,19 @@ impl DrawableScreen for ConversationTab {
 
     fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
         let mut left_part = rect.screen();
-        let right_part = left_part.split_vertically();
+        let mut right_part = left_part.split_vertically();
         let mut writer = left_part.get_content_rect().screen().get_writer();
 
         write!(buffer, "{}", termion::clear::All).unwrap();
 
         if let Some(conversation_tree) = self.conversation_tree.as_ref() {
-            conversation_tree.draw(buffer, &mut writer);
+            conversation_tree.draw_tree(buffer, &mut writer);
+            conversation_tree.draw_selected_item(buffer, &mut right_part);
         }
 
         left_part.draw_border(buffer);
         right_part.draw_border(buffer);
+
         buffer.flush().unwrap();
     }
 }
