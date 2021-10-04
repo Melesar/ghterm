@@ -3,6 +3,7 @@ use std::process::{Command, Stdio};
 use json::{self, JsonValue};
 use std::fs;
 use crate::error::Error;
+use super::diff::DiffRequest;
 
 pub struct GhClient {
     repo_owner: String,
@@ -58,6 +59,15 @@ impl GhClient {
             .set_query(query)
             .build();
         Ok(request)
+    }
+
+    pub fn pr_diff(&self, number: u32) -> DiffRequest {
+        let mut cmd = Command::new("gh");
+        cmd.args(&["pr", "diff"]);
+        cmd.arg(&number.to_string());
+        cmd.arg(&format!("-R {}/{}", self.repo_owner, self.repo_name));
+
+        DiffRequest::new(cmd)
     }
 
     fn get_query(&self, name: &str) -> Result<String, Error> {
