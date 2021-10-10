@@ -6,6 +6,7 @@ pub struct DiffRequest {
     cmd: Command,
 }
 
+#[derive(Debug)]
 pub struct DiffHunk {
     file_name: String,
     start_line: usize,

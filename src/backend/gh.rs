@@ -65,7 +65,7 @@ impl GhClient {
         let mut cmd = Command::new("gh");
         cmd.args(&["pr", "diff"]);
         cmd.arg(&number.to_string());
-        cmd.arg(&format!("-R {}/{}", self.repo_owner, self.repo_name));
+        cmd.args(&["-R", &format!("{}/{}", self.repo_owner, self.repo_name)]);
 
         DiffRequest::new(cmd)
     }

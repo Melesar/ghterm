@@ -1,3 +1,4 @@
+use crate::backend::diff::ChangeList;
 use json::JsonValue;
 use crate::app::events::AppEvent;
 use crate::backend::task::*;
@@ -19,6 +20,7 @@ pub struct MainScreenHandler<'a> {
     screen: MainScreen,
     app_events_sender: mpsc::Sender<AppEvent>,
     conversation_task: TaskHandle<Result<JsonValue, Error>>,
+    diff_task: TaskHandle<Result<String, Error>>,
     task_manager: TaskManager,
     client: &'a GhClient,
     screen_events_receiver: mpsc::Receiver<MainScreenEvent>,
@@ -26,9 +28,11 @@ pub struct MainScreenHandler<'a> {
 
 impl<'a> MainScreenHandler<'a> {
     pub fn new (number: u32, app_events_sender: mpsc::Sender<AppEvent>, client: &'a GhClient) -> Self {
-        let mut request = client.pr_conversation(number).expect("Problem fetching pr conversation");
+        let mut conversation_request = client.pr_conversation(number).expect("Problem fetching pr conversation");
+        let mut diff_request = client.pr_diff(number);
         let mut task_manager = TaskManager::new();
-        let conversation_task = task_manager.post(move || request.execute());
+        let conversation_task = task_manager.post(move || conversation_request.execute());
+        let diff_task = task_manager.post(move || diff_request.execute());
         
         let (events_tx, screen_events_receiver) = mpsc::channel();
         let screen = MainScreen::new(app_events_sender.clone(), events_tx.clone());
@@ -37,6 +41,7 @@ impl<'a> MainScreenHandler<'a> {
             screen,
             app_events_sender,
             conversation_task,
+            diff_task,
             task_manager,
             client,
             screen_events_receiver,
@@ -59,6 +64,16 @@ impl<'a> ScreenHandler for MainScreenHandler<'a> {
                 Ok(json) => {
                     let conversation = pr::parse_conversation(json);
                     self.screen.set_conversation(conversation);
+                },
+                Err(error) => self.app_events_sender.send(AppEvent::Error(error.to_string())).unwrap()
+            }
+        }
+
+        if let Some(diff) = self.diff_task.poll() {
+            match diff {
+                Ok(diff) => {
+                    let changelist = ChangeList::new(diff);
+                    self.screen.set_changelist(changelist);
                 },
                 Err(error) => self.app_events_sender.send(AppEvent::Error(error.to_string())).unwrap()
             }

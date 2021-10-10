@@ -1,3 +1,5 @@
+use std::rc::Rc;
+use crate::backend::diff::ChangeList;
 use crate::app::events::AppEvent;
 use crate::backend::pr::PrConversation;
 use super::main_screen_handler::MainScreenEvent;
@@ -68,9 +70,23 @@ impl MainScreen {
     }
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
-        if let MainScreenTab::Conversation(ct) = &mut self.tabs[self.current_tab_index] {
-            ct.set_conversation(conversation);
-            self.app_event_sender.send(AppEvent::ScreenRepaint).unwrap();
+        for tab in self.tabs.iter_mut() {
+            if let MainScreenTab::Conversation(ct) = tab {
+                ct.set_conversation(conversation);
+                self.app_event_sender.send(AppEvent::ScreenRepaint).unwrap();
+                break;
+            }
+        }
+    }
+
+    pub fn set_changelist(&mut self, changelist: ChangeList) {
+        let changelist = Rc::new(changelist);
+        for tab in self.tabs.iter_mut() {
+            if let MainScreenTab::Conversation(ct) = tab {
+                ct.set_changelist(Rc::clone(&changelist));
+                self.app_event_sender.send(AppEvent::ScreenRepaint).unwrap();
+                break;
+            }
         }
     }
 }

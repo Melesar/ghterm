@@ -1,5 +1,7 @@
+use crate::frontend::conversation_tab::ChangeList;
 use crate::backend::pr::*;
 use std::io::Write;
+use std::rc::Rc;
 use crate::frontend::screen::{ScreenWriter, Screen};
 use super::conversation_draw::{TreeDraw, ContentDraw};
 use if_chain::if_chain;
@@ -153,9 +155,9 @@ impl ConversationTree {
         }
     }
 
-    pub fn draw_selected_item(&self, buffer: &mut dyn Write, screen: &mut Screen) {
+    pub fn draw_selected_item(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>) {
         if let Some(selected_node) = self.nodes.get(self.selected_node) {
-            self.get_content_draw(&selected_node.data).draw(buffer, screen);
+            self.get_content_draw(&selected_node.data).draw(buffer, screen, changelist);
         }
     }
 

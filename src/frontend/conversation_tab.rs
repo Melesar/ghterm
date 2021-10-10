@@ -1,6 +1,8 @@
 mod conversation_tree;
 mod conversation_draw;
 
+use std::rc::Rc;
+use crate::backend::diff::ChangeList;
 use std::io::Write;
 use std::sync::mpsc;
 
@@ -13,15 +15,20 @@ use conversation_tree::ConversationTree;
 pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
     conversation_tree: Option<ConversationTree>,
+    changelist: Option<Rc<ChangeList>>,
 }
 
 impl ConversationTab {
     pub fn new (screen_event_sender: mpsc::Sender<MainScreenEvent>) -> Self {
-        ConversationTab { screen_event_sender, conversation_tree: None }
+        ConversationTab { screen_event_sender, conversation_tree: None, changelist: None }
     }
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
         self.conversation_tree = Some(ConversationTree::new(conversation));
+    }
+
+    pub fn set_changelist(&mut self, changelist: Rc<ChangeList>) {
+        self.changelist = Some(Rc::clone(&changelist));
     }
 }
 
@@ -36,7 +43,7 @@ impl DrawableScreen for ConversationTab {
 
         if let Some(conversation_tree) = self.conversation_tree.as_ref() {
             conversation_tree.draw_tree(buffer, &mut writer);
-            conversation_tree.draw_selected_item(buffer, &mut right_part);
+            conversation_tree.draw_selected_item(buffer, &mut right_part, &self.changelist);
         }
 
         left_part.draw_border(buffer);
