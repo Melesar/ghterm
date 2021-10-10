@@ -1,3 +1,4 @@
+use super::diff::DiffHunk;
 use chrono::{DateTime, Local};
 use json::JsonValue;
 use std::collections::HashMap;
@@ -28,8 +29,7 @@ pub struct PrComment {
 
 #[derive(Debug)]
 pub struct PrConversationThread {
-    //TODO Parse code hunks
-    // pub code_hunk: Option<CodeHunk>,
+    pub code_hunk: Option<DiffHunk>,
     pub comments: Vec<PrComment>,
 }
 
@@ -76,7 +76,6 @@ pub fn list_prs (json: JsonValue) -> Vec<PrHeader> {
     prs
 }
 
-
 pub fn parse_conversation(json: JsonValue) -> PrConversation {
     let threads = json["data"]["repository"]["pullRequest"]["reviewThreads"]["edges"].members();
     let reviews = json["data"]["repository"]["pullRequest"]["reviews"]["edges"].members();
@@ -84,6 +83,11 @@ pub fn parse_conversation(json: JsonValue) -> PrConversation {
 
     let mut threads_map = HashMap::new();
     for thread in threads {
+        let file_name = thread["node"]["path"].as_str().map(|s| s.to_string());
+        let end_line = thread["node"]["originalLine"].as_usize().unwrap();
+        let start_line = thread["node"]["originalStartLine"].as_usize().map_or(end_line, |n| n);
+        let code_hunk = if file_name.is_some() { Some(DiffHunk::new(file_name.unwrap(), start_line, end_line)) } else { None };
+
         let thread_comments = thread["node"]["comments"]["edges"].members();
         let mut comments_list = vec![];
         let mut root_comment = String::new();
@@ -95,7 +99,7 @@ pub fn parse_conversation(json: JsonValue) -> PrConversation {
         }
 
         if root_comment.len() > 0 {
-            threads_map.insert(root_comment, PrConversationThread {comments: comments_list});
+            threads_map.insert(root_comment, PrConversationThread {code_hunk, comments: comments_list});
         }
     }
 

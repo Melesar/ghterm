@@ -35,6 +35,12 @@ impl DiffRequest {
     }
 }
 
+impl DiffHunk {
+    pub fn new(file_name: String, start_line: usize, end_line: usize) -> Self {
+        DiffHunk { file_name, start_line, end_line }
+    }
+}
+
 impl ChangeList {
     pub fn new(diff: String) -> Self {
         ChangeList { raw: diff, files: vec![], diffs: vec![] }
