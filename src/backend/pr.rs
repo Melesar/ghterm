@@ -1,4 +1,4 @@
-use super::diff::CodeRange;
+use super::diff::{ CodeRange, DiffSide };
 use chrono::{DateTime, Local};
 use json::JsonValue;
 use std::collections::HashMap;
@@ -84,9 +84,10 @@ pub fn parse_conversation(json: JsonValue) -> PrConversation {
     let mut threads_map = HashMap::new();
     for thread in threads {
         let file_name = thread["node"]["path"].as_str().map(|s| s.to_string());
+        let side = thread["node"]["diffSide"].as_str().map(|s| { if s == "LEFT" { DiffSide::Left } else { DiffSide::Right } }).unwrap();
         let end_line = thread["node"]["originalLine"].as_usize().unwrap();
         let start_line = thread["node"]["originalStartLine"].as_usize().map_or(end_line, |n| n);
-        let code_range = file_name.map(|f| CodeRange::new(f, start_line, end_line));
+        let code_range = file_name.map(|f| CodeRange::new(f, side, start_line, end_line));
 
         let thread_comments = thread["node"]["comments"]["edges"].members();
         let mut comments_list = vec![];
