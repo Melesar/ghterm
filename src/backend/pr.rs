@@ -1,4 +1,4 @@
-use super::diff::DiffHunk;
+use super::diff::CodeRange;
 use chrono::{DateTime, Local};
 use json::JsonValue;
 use std::collections::HashMap;
@@ -29,7 +29,7 @@ pub struct PrComment {
 
 #[derive(Debug)]
 pub struct PrConversationThread {
-    pub code_hunk: Option<DiffHunk>,
+    pub code_range: Option<CodeRange>,
     pub comments: Vec<PrComment>,
 }
 
@@ -86,7 +86,7 @@ pub fn parse_conversation(json: JsonValue) -> PrConversation {
         let file_name = thread["node"]["path"].as_str().map(|s| s.to_string());
         let end_line = thread["node"]["originalLine"].as_usize().unwrap();
         let start_line = thread["node"]["originalStartLine"].as_usize().map_or(end_line, |n| n);
-        let code_hunk = if file_name.is_some() { Some(DiffHunk::new(file_name.unwrap(), start_line, end_line)) } else { None };
+        let code_range = file_name.map(|f| CodeRange::new(f, start_line, end_line));
 
         let thread_comments = thread["node"]["comments"]["edges"].members();
         let mut comments_list = vec![];
@@ -99,7 +99,7 @@ pub fn parse_conversation(json: JsonValue) -> PrConversation {
         }
 
         if root_comment.len() > 0 {
-            threads_map.insert(root_comment, PrConversationThread {code_hunk, comments: comments_list});
+            threads_map.insert(root_comment, PrConversationThread {code_range, comments: comments_list});
         }
     }
 

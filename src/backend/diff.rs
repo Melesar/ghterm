@@ -7,7 +7,7 @@ pub struct DiffRequest {
 }
 
 #[derive(Debug)]
-pub struct DiffHunk {
+pub struct CodeRange {
     file_name: String,
     start_line: usize,
     end_line: usize,
@@ -35,9 +35,9 @@ impl DiffRequest {
     }
 }
 
-impl DiffHunk {
+impl CodeRange {
     pub fn new(file_name: String, start_line: usize, end_line: usize) -> Self {
-        DiffHunk { file_name, start_line, end_line }
+        CodeRange { file_name, start_line, end_line }
     }
 }
 
@@ -46,7 +46,7 @@ impl ChangeList {
         ChangeList { raw: diff, files: vec![], diffs: vec![] }
     }
 
-    pub fn get_hunk<'a>(&'a self, hunk: &DiffHunk) -> &'a str {
+    pub fn get_hunk<'a>(&'a self, code_range: &CodeRange) -> &'a str {
         ""
     }
 }
