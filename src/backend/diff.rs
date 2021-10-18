@@ -92,7 +92,7 @@ impl ChangeList {
         let mut files = HashMap::new();
         let mut reading_state : Option<DiffReadingState> = None;
         let file_name_regex = Regex::new(r"^diff --git a/(.+) b/(.+)$").unwrap();
-        let hunk_regex = Regex::new(r"^@@ -(\d,\d) +(\d+,\d+) @@$").unwrap();
+        let hunk_regex = Regex::new(r"^@@ -(\d,\d) +(\d+,\d+) @@").unwrap();
         
         for (line_index, line) in diff.lines().enumerate() {
             if let Some(captures) = file_name_regex.captures(line) {
