@@ -95,6 +95,7 @@ impl ChangeList {
         let hunk_regex = Regex::new(r"^@@ -(\d,\d) +(\d+,\d+) @@").unwrap();
         
         for (line_index, line) in diff.lines().enumerate() {
+
             if let Some(captures) = file_name_regex.captures(line) {
                 if let Some(mut reading_state) = reading_state {
                     if let Some(mut current_hunk) = reading_state.current_hunk.take() {
@@ -106,7 +107,7 @@ impl ChangeList {
                 }
 
                 let mut new_state = DiffReadingState::new();
-                new_state.current_file_name = Self::read_file_name(captures);
+                new_state.current_file_name = read_file_name(captures);
                 new_state.current_file.start_line = line_index;
                 new_state.current_file.header_range.0 = line_index;
 
@@ -114,7 +115,7 @@ impl ChangeList {
             }
             else if let Some(captures) = hunk_regex.captures(line) {
                 if let Some(reading_state) = reading_state.as_mut() {
-                    let hunk_ranges = Self::read_hunk_ranges(captures);
+                    let hunk_ranges = read_hunk_ranges(captures);
                     let new_hunk = HunkDiffRef::new(hunk_ranges, line_index);
                     let old_hunk = reading_state.current_hunk.replace(new_hunk);
 
@@ -147,40 +148,60 @@ impl ChangeList {
         }
 
         let file_diff_range = file_diff_range.unwrap();
-        let mut line_number = file_diff_range.start_line;
-
         for hunk in file_diff_range.hunks.iter() {
             let hunk_range = match code_range.side {
                 DiffSide::Left => &hunk.range_before,
                 DiffSide::Right => &hunk.range_after,
             };
 
-            if code_range.start_line < hunk_range.0 || code_range.start_line > hunk_range.0 + hunk_range.1 {
+            if code_range.start_line < hunk_range.0 || code_range.start_line > hunk_range.1 {
                 continue;
             }
 
-            line_number += hunk.changelist_range.0;
-            for line in self.raw.lines().skip(line_number) {
+            let prefix_symbol = match code_range.side {
+                DiffSide::Left => "-",
+                DiffSide::Right => "+",
+            };
 
+            const LINES_PADDING : usize = 4;
+
+            let mut start_line_idx = self.raw.lines()
+                .skip(hunk.changelist_range.0 + 1)
+                .take(hunk.changelist_range.1 - hunk.changelist_range.0 + 1)
+                .enumerate()
+                .find(|(idx, line)| (line.starts_with(" ") || line.starts_with(prefix_symbol)) && idx + hunk_range.0 == code_range.start_line)
+                .unwrap().0;
+
+            let end_line_idx = start_line_idx + (code_range.end_line - code_range.start_line);
+
+            //TODO check hunk boudaries
+            if end_line_idx - start_line_idx + 1 < LINES_PADDING {
+                start_line_idx -= LINES_PADDING - end_line_idx + start_line_idx - 1;
             }
+
+            let bytes_before = self.raw.lines().take(start_line_idx).fold(0_usize, |acc, val| acc + val.len());
+            let bytes_after = self.raw.lines().take(end_line_idx + 1).fold(0_usize, |acc, val| acc + val.len());
+            
+            return &self.raw[bytes_before..bytes_after];
         }
 
 
         ""
     }
 
-    fn read_file_name<'a>(captures: Captures<'a>) -> String {
-        captures[1].to_string()
-    }
+}
 
-    fn read_hunk_ranges<'a>(captures: Captures<'a>) -> (Range, Range) {
-        let range_before = &captures[1];
-        let range_after = &captures[2];
-        (Self::read_hunk_range(range_before), Self::read_hunk_range(range_after))
-    }
+fn read_file_name<'a>(captures: Captures<'a>) -> String {
+    captures[1].to_string()
+}
 
-    fn read_hunk_range(range_str: &str) -> Range {
-        let mut iter = range_str.split(',');
-        Range(iter.next().unwrap().parse().unwrap(), iter.next().unwrap().parse().unwrap())
-    }
+fn read_hunk_ranges<'a>(captures: Captures<'a>) -> (Range, Range) {
+    let range_before = &captures[1];
+    let range_after = &captures[2];
+    (read_hunk_range(range_before), read_hunk_range(range_after))
+}
+
+fn read_hunk_range(range_str: &str) -> Range {
+    let mut iter = range_str.split(',');
+    Range(iter.next().unwrap().parse().unwrap(), iter.next().unwrap().parse().unwrap())
 }
