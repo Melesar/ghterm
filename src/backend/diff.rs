@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::process::Command;
-use super::gh::GhClient;
 use crate::error::Error;
 use regex::{Captures, Regex};
 
@@ -24,11 +23,12 @@ pub struct Range(usize, usize);
 
 pub struct FileDiffRef {
     pub start_line: usize,
-    pub hunks: Vec<DiffHunkRef>,
+    pub header_range: Range,
+    pub hunks: Vec<HunkDiffRef>,
 }
 
 #[derive(Debug)]
-pub struct DiffHunkRef {
+pub struct HunkDiffRef {
     pub changelist_range: Range,
     pub range_before: Range,
     pub range_after: Range,
@@ -37,6 +37,13 @@ pub struct DiffHunkRef {
 pub struct ChangeList {
     raw: String,
     files: HashMap<String, FileDiffRef>,
+}
+
+struct DiffReadingState {
+    pub line_index: usize,
+    pub current_file_name: String,
+    pub current_file: FileDiffRef,
+    pub current_hunk: Option<HunkDiffRef>,
 }
 
 impl DiffRequest {
@@ -62,33 +69,72 @@ impl CodeRange {
     }
 }
 
-struct DiffReadingState {
-    pub line_index: usize,
-    pub current_file: String,
+impl FileDiffRef {
+    pub fn new(start_line: usize) -> Self {
+        FileDiffRef { start_line, header_range: Range(0, 0), hunks: vec![] }
+    }
+}
+
+impl HunkDiffRef {
+    pub fn new(ranges: (Range, Range), changelist_start: usize) -> Self {
+        HunkDiffRef { changelist_range: Range(changelist_start, 0), range_before: ranges.0, range_after: ranges.1 }
+    }
 }
 
 impl DiffReadingState {
     pub fn new() -> Self {
-        DiffReadingState { line_index: 0, current_file: String::new() }
+        DiffReadingState { line_index: 0, current_file_name: String::new(), current_file: FileDiffRef::new(0), current_hunk: None }
     }
 }
 
 impl ChangeList {
     pub fn new(diff: String) -> Self {
-        let files = HashMap::new();
-        let mut reading_state = DiffReadingState::new();
+        let mut files = HashMap::new();
+        let mut reading_state : Option<DiffReadingState> = None;
         let file_name_regex = Regex::new(r"^diff --git a/(.+) b/(.+)$").unwrap();
         let hunk_regex = Regex::new(r"^@@ -(\d,\d) +(\d+,\d+) @@$").unwrap();
         
-        for line in diff.lines() {
+        for (line_index, line) in diff.lines().enumerate() {
             if let Some(captures) = file_name_regex.captures(line) {
-                Self::read_file_name(captures, &mut reading_state);
+                if let Some(mut reading_state) = reading_state {
+                    if let Some(mut current_hunk) = reading_state.current_hunk.take() {
+                        current_hunk.changelist_range.1 = line_index - 1;
+                        reading_state.current_file.hunks.push(current_hunk);
+                    }
+
+                    files.insert(reading_state.current_file_name, reading_state.current_file);
+                }
+
+                let mut new_state = DiffReadingState::new();
+                new_state.current_file_name = Self::read_file_name(captures);
+                new_state.current_file.start_line = line_index;
+                new_state.current_file.header_range.0 = line_index;
+
+                reading_state = Some(new_state);
             }
             else if let Some(captures) = hunk_regex.captures(line) {
+                if let Some(reading_state) = reading_state.as_mut() {
+                    let hunk_ranges = Self::read_hunk_ranges(captures);
+                    let new_hunk = HunkDiffRef::new(hunk_ranges, line_index);
+                    let old_hunk = reading_state.current_hunk.replace(new_hunk);
 
+                    if let Some(mut old_hunk) = old_hunk {
+                        old_hunk.changelist_range.1 = line_index - 1;
+                        reading_state.current_file.hunks.push(old_hunk);
+                    }
+                    else {
+                        reading_state.current_file.header_range.1 = line_index - 1;
+                    }
+                }
             }
-
-            reading_state.line_index += 1;
+            else if line == r"\ No newline at end of file" {
+                if let Some(reading_state) = reading_state.as_mut() {
+                    if let Some(mut current_hunk) = reading_state.current_hunk.take() {
+                        current_hunk.changelist_range.1 = line_index - 1;
+                        reading_state.current_file.hunks.push(current_hunk);
+                    }
+                }
+            }
         }
 
         ChangeList { raw: diff, files }
@@ -109,13 +155,32 @@ impl ChangeList {
                 DiffSide::Right => &hunk.range_after,
             };
 
+            if code_range.start_line < hunk_range.0 || code_range.start_line > hunk_range.0 + hunk_range.1 {
+                continue;
+            }
+
+            line_number += hunk.changelist_range.0;
+            for line in self.raw.lines().skip(line_number) {
+
+            }
         }
 
 
         ""
     }
 
-    fn read_file_name<'a>(captures: Captures<'a>, reading_state: &mut DiffReadingState) {
-        reading_state.current_file = captures[1].to_string();
+    fn read_file_name<'a>(captures: Captures<'a>) -> String {
+        captures[1].to_string()
+    }
+
+    fn read_hunk_ranges<'a>(captures: Captures<'a>) -> (Range, Range) {
+        let range_before = &captures[1];
+        let range_after = &captures[2];
+        (Self::read_hunk_range(range_before), Self::read_hunk_range(range_after))
+    }
+
+    fn read_hunk_range(range_str: &str) -> Range {
+        let mut iter = range_str.split(',');
+        Range(iter.next().unwrap().parse().unwrap(), iter.next().unwrap().parse().unwrap())
     }
 }
