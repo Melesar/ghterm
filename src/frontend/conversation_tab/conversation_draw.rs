@@ -55,20 +55,30 @@ impl ContentDraw for PrComment {
 
 impl ContentDraw for PrConversationThread {
     fn draw(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>) {
-        let bottom_part = screen.split_horizontally();
-        let mut thread_writer = bottom_part.get_content_rect().screen().get_writer();
 
-        if let Some(changelist) = changelist.as_ref() {
-            let mut changelist_writer = screen.get_content_rect().screen().get_writer();
-            //changelist_writer.write_hunk(buffer, &self.code_hunk, changelist);
+        let mut thread_writer : ScreenWriter;
+
+        if let Some(code_range) = &self.code_range {
+
+            let thread_screen = screen.split_horizontally();
+            thread_writer = thread_screen.get_content_rect().screen().get_writer();
+
+            if let Some(changelist) = changelist.as_ref() {
+                let mut changelist_writer = screen.get_content_rect().screen().get_writer();
+                changelist_writer.write_line(buffer, changelist.get_hunk(code_range)); //TODO draw diff properly
+            }
+
+            thread_screen.draw_border(buffer);
+
+        } else {
+            thread_writer = screen.get_content_rect().screen().get_writer();
+            screen.draw_border(buffer);
         }
-
+ 
         for comment in self.comments.iter() {
             thread_writer.write_line(buffer, &comment.author_name);
             thread_writer.write_line(buffer, &comment.body);
             thread_writer.write_line(buffer, "");
         }
-
-        bottom_part.draw_border(buffer);
     }
 }
