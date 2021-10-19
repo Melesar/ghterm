@@ -92,7 +92,7 @@ impl ChangeList {
         let mut files = HashMap::new();
         let mut reading_state : Option<DiffReadingState> = None;
         let file_name_regex = Regex::new(r"^diff --git a/(.+) b/(.+)$").unwrap();
-        let hunk_regex = Regex::new(r"^@@ -(\d,\d) +(\d+,\d+) @@").unwrap();
+        let hunk_regex = Regex::new(r"^@@ -(\d+,\d+) \+(\d+,\d+) @@").unwrap();
         
         for (line_index, line) in diff.lines().enumerate() {
 
@@ -141,7 +141,7 @@ impl ChangeList {
         ChangeList { raw: diff, files }
     }
 
-    pub fn get_hunk<'a>(&'a self, code_range: &CodeRange) -> &'a str {
+    pub fn get_hunk(&self, code_range: &CodeRange) -> &str {
         let file_diff_range = self.files.get(&code_range.file_name);
         if file_diff_range.is_none() {
             return "";
@@ -154,7 +154,7 @@ impl ChangeList {
                 DiffSide::Right => &hunk.range_after,
             };
 
-            if code_range.start_line < hunk_range.0 || code_range.start_line > hunk_range.1 {
+            if code_range.start_line < hunk_range.0 || code_range.start_line > hunk_range.0 + hunk_range.1 - 1 {
                 continue;
             }
 
@@ -166,17 +166,19 @@ impl ChangeList {
             const LINES_PADDING : usize = 4;
 
             let mut start_line_idx = self.raw.lines()
-                .skip(hunk.changelist_range.0 + 1)
-                .take(hunk.changelist_range.1 - hunk.changelist_range.0 + 1)
                 .enumerate()
-                .find(|(idx, line)| (line.starts_with(" ") || line.starts_with(prefix_symbol)) && idx + hunk_range.0 == code_range.start_line)
-                .unwrap().0;
+                .skip(hunk.changelist_range.0 + 1)
+                .take(hunk.changelist_range.1 - hunk.changelist_range.0)
+                .filter(|(_, l)| l.starts_with(" ") || l.starts_with(prefix_symbol))
+                .enumerate()
+                .find(|(idx, _)| idx + hunk_range.0 == code_range.start_line)
+                .unwrap().1.0;
 
             let end_line_idx = start_line_idx + (code_range.end_line - code_range.start_line);
 
             //TODO check hunk boudaries
             if end_line_idx - start_line_idx + 1 < LINES_PADDING {
-                start_line_idx -= LINES_PADDING - end_line_idx + start_line_idx - 1;
+                start_line_idx -= LINES_PADDING - (end_line_idx - start_line_idx + 1);
             }
 
             let bytes_before = self.raw.lines().take(start_line_idx).fold(0_usize, |acc, val| acc + val.len());
@@ -191,11 +193,11 @@ impl ChangeList {
 
 }
 
-fn read_file_name<'a>(captures: Captures<'a>) -> String {
+fn read_file_name(captures: Captures) -> String {
     captures[1].to_string()
 }
 
-fn read_hunk_ranges<'a>(captures: Captures<'a>) -> (Range, Range) {
+fn read_hunk_ranges(captures: Captures) -> (Range, Range) {
     let range_before = &captures[1];
     let range_after = &captures[2];
     (read_hunk_range(range_before), read_hunk_range(range_after))
@@ -204,4 +206,24 @@ fn read_hunk_ranges<'a>(captures: Captures<'a>) -> (Range, Range) {
 fn read_hunk_range(range_str: &str) -> Range {
     let mut iter = range_str.split(',');
     Range(iter.next().unwrap().parse().unwrap(), iter.next().unwrap().parse().unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test() -> Result<(), String> {
+        let changelist = load_diff().map_err(|e| e.to_string())?;
+        let code_range = CodeRange::new(String::from("Assets/BlindGame/Scripts/CommunityTests/Blind.CommunityTests.asmdef"), DiffSide::Right, 14, 14);
+        let hunk = changelist.get_hunk(&code_range);
+        println!("{}", hunk);
+        Ok(())
+    }
+
+    fn load_diff() -> Result<ChangeList, std::io::Error> {
+        let text = std::fs::read_to_string("test/pr_676.diff")?;
+        Ok(ChangeList::new(text))
+    }
 }
