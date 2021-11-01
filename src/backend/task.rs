@@ -21,6 +21,7 @@ impl TaskManager {
 
         let (sender, receiver) = mpsc::channel();
         let app_sender = self.sender.clone();
+        //TODO use a thread pool
         thread::spawn(move || {
             let result = (task)();
             if let Ok(_) = sender.send(result) {

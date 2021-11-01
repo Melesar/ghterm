@@ -12,6 +12,7 @@ use super::main_screen_handler::MainScreenEvent;
 use super::screen::*;
 use conversation_tree::ConversationTree;
 use termion::event::Key;
+use termion::cursor::Goto;
 
 pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
@@ -40,7 +41,7 @@ impl DrawableScreen for ConversationTab {
         let mut right_part = left_part.split_vertically();
         let mut writer = left_part.get_content_rect().screen().get_writer();
 
-        write!(buffer, "{}", termion::clear::All).unwrap();
+        write!(buffer, "{}{}", termion::cursor::Goto(rect.x + 1, rect.y + 1), termion::clear::AfterCursor).unwrap();
 
         if let Some(conversation_tree) = self.conversation_tree.as_ref() {
             conversation_tree.draw_tree(buffer, &mut writer);
@@ -49,8 +50,6 @@ impl DrawableScreen for ConversationTab {
 
         left_part.draw_border(buffer);
         right_part.draw_border(buffer);
-
-        buffer.flush().unwrap();
     }
 }
 
