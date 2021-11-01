@@ -61,11 +61,10 @@ fn run(description: &Args) -> Result<(), Error> {
     let stdout = stdout.lock().into_raw_mode().unwrap();
     let stdout = termion::screen::AlternateScreen::from(stdout);
 
-    let stdin = termion::async_stdin();
     let repo_params = get_repo_params(&description);
     let gh_client = GhClient::new(repo_params.owner, repo_params.repo)?;
     gh_client.validate(repo_params.pr_num)?;
-    let app = App::new(stdout, stdin, gh_client);
+    let app = App::new(stdout, gh_client);
     app.run(repo_params.pr_num)
 }
 

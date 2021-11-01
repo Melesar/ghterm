@@ -1,6 +1,7 @@
 use std::io::Write;
 use std::iter::FromIterator;
 use termion::cursor::Goto;
+use termion::event::Key;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Rect {
@@ -21,8 +22,8 @@ pub trait DrawableScreen {
 }
 
 pub trait InteractableScreen {
-    fn validate_input(&self, input: u8) -> bool;
-    fn process_input(&mut self, input: u8);
+    fn validate_input(&self, input: Key) -> bool;
+    fn process_input(&mut self, input: Key);
 }
 
 pub trait ApplicationScreen : DrawableScreen + InteractableScreen { 

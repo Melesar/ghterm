@@ -30,7 +30,7 @@ impl<'a> MainScreenHandler<'a> {
     pub fn new (number: u32, app_events_sender: mpsc::Sender<AppEvent>, client: &'a GhClient) -> Self {
         let mut conversation_request = client.pr_conversation(number).expect("Problem fetching pr conversation");
         let mut diff_request = client.pr_diff(number);
-        let mut task_manager = TaskManager::new();
+        let mut task_manager = TaskManager::new(app_events_sender.clone());
         let conversation_task = task_manager.post(move || conversation_request.execute());
         let diff_task = task_manager.post(move || diff_request.execute());
         
@@ -53,10 +53,6 @@ impl<'a> ScreenHandler for MainScreenHandler<'a> {
     fn update(&mut self) {
         if let Some(evt) = self.screen_events_receiver.try_recv().ok() {
 
-        }
-
-        if self.task_manager.update() == 0 {
-            return;
         }
 
         if let Some(res) = self.conversation_task.poll() {
@@ -89,11 +85,11 @@ impl<'a> DrawableScreen for MainScreenHandler<'a> {
 }
 
 impl<'a> InteractableScreen for MainScreenHandler<'a> {
-    fn validate_input(&self, input: u8) -> bool {
+    fn validate_input(&self, input: termion::event::Key) -> bool {
         self.screen.validate_input(input)
     }
 
-    fn process_input(&mut self, input: u8) {
+    fn process_input(&mut self, input: termion::event::Key) {
         self.screen.process_input(input);
     }
 }

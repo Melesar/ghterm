@@ -1,10 +1,9 @@
-use std::thread::{self, ThreadId};
+use std::thread;
 use std::sync::mpsc;
+use crate::app::events::AppEvent;
 
 pub struct TaskManager {
-    tasks: Vec<ThreadId>,
-    sender: mpsc::Sender<ThreadId>,
-    receiver: mpsc::Receiver<ThreadId>,
+    sender: mpsc::Sender<AppEvent>,
 }
 
 pub struct TaskHandle<T> {
@@ -12,9 +11,8 @@ pub struct TaskHandle<T> {
 }
 
 impl TaskManager {
-    pub fn new() -> Self {
-        let (sender, receiver) = mpsc::channel::<ThreadId>();
-        TaskManager{ tasks: vec![], sender, receiver }
+    pub fn new(sender: mpsc::Sender<AppEvent>) -> Self {
+        TaskManager{ sender }
     }
 
     pub fn post<F, T>(&mut self, mut task: F) -> TaskHandle<T> 
@@ -22,25 +20,14 @@ impl TaskManager {
               T: Send + 'static {
 
         let (sender, receiver) = mpsc::channel();
-        let notify_sender = self.sender.clone();
-        let handle = thread::spawn(move || {
+        let app_sender = self.sender.clone();
+        thread::spawn(move || {
             let result = (task)();
             if let Ok(_) = sender.send(result) {
-                notify_sender.send(thread::current().id()).unwrap();
+                app_sender.send(AppEvent::TaskCompleted).unwrap();
             }
         });
-        self.tasks.push(handle.thread().id());
         TaskHandle{receiver}
-    }
-
-    pub fn update(&mut self) -> usize {
-        if let Some(id) = self.receiver.try_recv().ok() {
-            if let Some(index) = self.tasks.iter().position(|x| *x == id) {
-                self.tasks.remove(index);
-            }
-        }
-
-        self.tasks.len()
     }
 }
 

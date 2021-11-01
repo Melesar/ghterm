@@ -6,6 +6,8 @@ use super::screen::*;
 use crate::backend::pr::PrHeader;
 use crate::app::events::AppEvent;
 
+use termion::event::Key;
+
 pub struct RepoSelectionScreen  {
     event_sender: mpsc::Sender<AppEvent>,
     prs: Option<Vec<PrHeader>>,
@@ -88,22 +90,22 @@ impl DrawableScreen for RepoSelectionScreen  {
 }
 
 impl InteractableScreen for RepoSelectionScreen {
-    fn validate_input(&self, input: u8) -> bool {
+    fn validate_input(&self, input: Key) -> bool {
         if self.prs.is_none() {
             return false;
         }
 
         match input {
-            b'j' | b'k' | 13 => true,
+            Key::Char('j') | Key::Char('k') | Key::Char('\n') => true,
             _ => false,
         }
     }
 
-    fn process_input(&mut self, input: u8) {
+    fn process_input(&mut self, input: Key) {
         match input {
-            b'j' => self.update_selection(1), 
-            b'k' => self.update_selection(-1),
-            13 => if let Some(repos) = &self.prs {
+            Key::Char('j') => self.update_selection(1), 
+            Key::Char('k') => self.update_selection(-1),
+            Key::Char('\n') => if let Some(repos) = &self.prs {
                 let chosen_repo = &repos[self.selected_index as usize];
                 self.event_sender.send(AppEvent::RepoChosen(chosen_repo.number)).unwrap();
             },

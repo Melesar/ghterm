@@ -6,11 +6,12 @@ use crate::backend::diff::ChangeList;
 use std::io::Write;
 use std::sync::mpsc;
 
-use crate::backend::pr::{ ConversationItem, PrComment, PrConversation, PrReview };
+use crate::backend::pr::PrConversation;
 
 use super::main_screen_handler::MainScreenEvent;
 use super::screen::*;
 use conversation_tree::ConversationTree;
+use termion::event::Key;
 
 pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
@@ -54,29 +55,28 @@ impl DrawableScreen for ConversationTab {
 }
 
 impl InteractableScreen for ConversationTab {
-    fn validate_input(&self, input: u8) -> bool {
+    fn validate_input(&self, input: Key) -> bool {
         self.conversation_tree.is_some() &&
-            (input == b'j' || input == b'k' || input == b'h' || input == b'l' ||
-             input == b' ')
+            (input == Key::Char('j') || input == Key::Char('k') || input == Key::Char('h') || input == Key::Char('l') ||
+             input == Key::Char(' '))
     }
 
-    fn process_input(&mut self, input: u8) {
+    fn process_input(&mut self, input: Key) {
         let vertical_offset = match input {
-            b'j' => 1,
-            b'k' => -1,
+            Key::Char('j') => 1,
+            Key::Char('k') => -1,
             _ => 0
         };
         let horizontal_offset = match input {
-            b'h' => -1, 
-            b'l' => 1,
+            Key::Char('h') => -1, 
+            Key::Char('l') => 1,
             _ => 0,
         };
         
         let tree = self.conversation_tree.as_mut().unwrap();
-        if input == b' ' {
+        if input == Key::Char(' ') {
             tree.toggle_expansion();
-        }
-        else if vertical_offset != 0 {
+        } else if vertical_offset != 0 {
             tree.move_selection(vertical_offset > 0);
         } 
     }

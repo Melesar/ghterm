@@ -4,6 +4,7 @@ use crate::backend::pr::{self, PrHeader};
 use crate::backend::gh::GhClient;
 use crate::error::Error;
 use json::JsonValue;
+use termion::event::Key;
 
 use super::screen::*;
 use super::repo_selection::RepoSelectionScreen;
@@ -42,11 +43,11 @@ impl ScreenHandler for RepoSelectionHandler  {
 }
 
 impl InteractableScreen for RepoSelectionHandler {
-    fn validate_input(&self, b: u8) -> bool {
+    fn validate_input(&self, b: Key) -> bool {
         self.screen.validate_input(b)
     }
 
-    fn process_input(&mut self, b: u8) {
+    fn process_input(&mut self, b: Key) {
         self.screen.process_input(b);
     }
 }

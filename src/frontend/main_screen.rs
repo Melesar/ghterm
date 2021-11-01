@@ -40,14 +40,14 @@ impl DrawableScreen for MainScreenTab {
 }
 
 impl InteractableScreen for MainScreenTab { 
-    fn validate_input(&self, input: u8) -> bool {
+    fn validate_input(&self, input: termion::event::Key) -> bool {
         match self {
             MainScreenTab::Conversation(ct) => ct.validate_input(input),
             _ => false,
         }
     }
 
-    fn process_input(&mut self, input: u8) {
+    fn process_input(&mut self, input: termion::event::Key) {
         match self {
             MainScreenTab::Conversation(ct) => ct.process_input(input),
             _ => (),
@@ -118,11 +118,11 @@ impl DrawableScreen for MainScreen {
 }
 
 impl InteractableScreen for MainScreen {
-    fn validate_input(&self, input: u8) -> bool {
+    fn validate_input(&self, input: termion::event::Key) -> bool {
         self.tabs[self.current_tab_index].validate_input(input)
     }
 
-    fn process_input(&mut self, input: u8) {
+    fn process_input(&mut self, input: termion::event::Key) {
         self.tabs[self.current_tab_index].process_input(input);
         self.app_event_sender.send(AppEvent::ScreenRepaint).unwrap();
     }
