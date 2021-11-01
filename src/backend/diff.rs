@@ -181,8 +181,14 @@ impl ChangeList {
                 start_line_idx -= LINES_PADDING - (end_line_idx - start_line_idx + 1);
             }
 
-            let bytes_before = self.raw.lines().take(start_line_idx).fold(0_usize, |acc, val| acc + val.len());
-            let bytes_after = self.raw.lines().take(end_line_idx + 1).fold(0_usize, |acc, val| acc + val.len());
+            let bytes_before = self.raw.lines()
+                .take(start_line_idx)
+                .fold(0_usize, |acc, val| acc + val.len() + 1); // +1 to account for \n
+
+            let bytes_after = self.raw.lines()
+                .skip(start_line_idx)
+                .take(end_line_idx - start_line_idx + 1)
+                .fold(bytes_before, |acc, val| acc + val.len() + 1);
             
             return &self.raw[bytes_before..bytes_after];
         }
@@ -218,7 +224,7 @@ mod tests {
         let changelist = load_diff().map_err(|e| e.to_string())?;
         let code_range = CodeRange::new(String::from("Assets/BlindGame/Scripts/CommunityTests/Blind.CommunityTests.asmdef"), DiffSide::Right, 14, 14);
         let hunk = changelist.get_hunk(&code_range);
-        println!("{}", hunk);
+        crate::logs::log(&format!("{}", hunk));
         Ok(())
     }
 
