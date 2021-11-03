@@ -3,12 +3,16 @@ use crate::backend::diff::ChangeList;
 use crate::app::events::AppEvent;
 use crate::backend::pr::PrConversation;
 use super::main_screen_handler::MainScreenEvent;
-use super::screen::*;
-use tui::backend::Backend;
-use tui::Frame;
+use tui::{
+    backend::Backend,
+    widgets::{Block, Borders, Tabs},
+    style::{Style, Modifier, Color},
+    text::{Spans, Span},
+    layout::{Layout, Direction, Constraint},
+    Frame,
+};
 
 use std::sync::mpsc;
-use std::io::Write;
 use std::fmt::{Display, Formatter, Error};
 
 use super::screen::{DrawableScreen, InteractableScreen};
@@ -16,26 +20,15 @@ use super::conversation_tab::ConversationTab;
 
 pub enum MainScreenTab { 
     Conversation(ConversationTab),
-    Timeline 
 }
 
 impl Display for MainScreenTab {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let label = match self {
             MainScreenTab::Conversation(_) => "Conversation",
-            MainScreenTab::Timeline => "Timeline",
             _ => "",
         };
         write!(f, "{}", label)
-    }
-}
-
-impl<B: Backend> DrawableScreen<B> for MainScreenTab {
-    fn draw(&self, frame: &mut Frame<B>) {
-        /*match self {
-            MainScreenTab::Conversation(ct) => ct.draw(buffer, rect),
-            _ => (),
-        }*/
     }
 }
 
@@ -93,25 +86,32 @@ impl MainScreen {
 
 impl<B: Backend> DrawableScreen<B> for MainScreen {
     fn draw(&self, frame: &mut Frame<B>) {
-        /*let screen_rect = Rect {y: rect.y + 1, h: rect.h - 1, ..rect};
-        let tab_screen = Screen::new(screen_rect);
+        let size = frame.size();
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![
+                Constraint::Length(1),
+                Constraint::Min(0),
+            ])
+            .split(size);
 
-        let mut title_offset : usize = 0;
-        for (index, tab) in self.tabs.iter().enumerate() {
-            let title = format!("{}. {}", index + 1, tab);
-            write!(buffer, "{bg}{fg}{go}{title}{nobg}{nofg}",
-                   //TODO change background color of not selected tabs
-                   bg = termion::color::Bg(termion::color::LightBlack),
-                   fg = termion::color::Fg(termion::color::White),
-                   go = Goto(rect.x + title_offset as u16 + 1, rect.y + 1),
-                   title = title,
-                   nobg = termion::color::Bg(termion::color::Reset),
-                   nofg = termion::color::Fg(termion::color::Reset)).unwrap();
-            title_offset += title.len() + 1;
+        let titles : Vec<Spans> = self.tabs.iter()
+            .enumerate()
+            .map(|(index, tab)| {
+                Spans::from(format!("{} {}", index + 1, tab))
+            })
+            .collect();
+
+        let tabs = Tabs::new(titles)
+            .select(self.current_tab_index);
+
+        frame.render_widget(tabs, layout[0]);
+
+        if let Some(selected_tab) = self.tabs.get(self.current_tab_index) {
+            match selected_tab {
+                MainScreenTab::Conversation(ct) => ct.draw(frame, layout[1]),
+            }
         }
-
-        self.tabs[self.current_tab_index].draw(buffer, tab_screen.get_full_rect());
-        buffer.flush().unwrap();*/
     }
 }
 
