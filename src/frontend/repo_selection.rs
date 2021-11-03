@@ -1,7 +1,16 @@
-use std::io::Write;
 use std::sync::mpsc;
+use std::ops::DerefMut;
 
 use super::screen::*;
+
+use super::util::*;
+use tui::{
+    backend::Backend,
+    style::{Style, Modifier},
+    widgets::{Block, Borders, ListItem, List},
+    layout::{Layout, Direction, Constraint},
+    Frame,
+};
 
 use crate::backend::pr::PrHeader;
 use crate::app::events::AppEvent;
@@ -10,88 +19,85 @@ use termion::event::Key;
 
 pub struct RepoSelectionScreen  {
     event_sender: mpsc::Sender<AppEvent>,
-    prs: Option<Vec<PrHeader>>,
-    selected_index: usize,
+    prs: StatefulList<PrHeader>,
 }
 
 impl RepoSelectionScreen {
     pub fn new(event_sender: mpsc::Sender<AppEvent>) -> Self {
-        RepoSelectionScreen { event_sender, prs: None, selected_index: 0 }
+        RepoSelectionScreen { event_sender, prs: StatefulList::new() }
     }
 
     pub fn set_pr_list(&mut self, prs: Vec<PrHeader>) {
-        self.prs = Some(prs);
-        self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
+        self.prs.items.extend(prs);
+        if !self.prs.items.is_empty() {
+            self.prs.select(0);
+            self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
+        }
     }
 
     fn update_selection(&mut self, delta: i32) {
-        let prs = if let Some(prs) = self.prs.as_ref() {
-            prs
-        } else {
-            return;
-        };
+        if delta == 0 || self.prs.items.is_empty() { return; }
 
-        if prs.len() == 0 {
-            return;
+        if delta > 0 {
+            self.prs.next();
+        } else {
+            self.prs.previous();
         }
 
-        let mut current_index = self.selected_index as i32;
-        let prs_count = prs.len() as i32;
-        
-        current_index += delta;
-        current_index = if current_index < 0 {
-            0
-        } else if current_index >= prs_count {
-            prs_count - 1
-        } else {
-            current_index
-        };
-        self.selected_index = current_index as usize;
         self.event_sender.send(AppEvent::ScreenRepaint).unwrap();
     }
 }
 
-impl DrawableScreen for RepoSelectionScreen  {
+impl<B: Backend> DrawableScreen<B> for RepoSelectionScreen  {
 
-    fn draw (&self, stdout: &mut dyn Write, rect: Rect) {
-        let screen = Screen::new(rect);
-        screen.draw_border(stdout);
-        if let Some(prs) = self.prs.as_ref() {
-            let rect = screen.get_content_rect();
-            
-            let mut start_position = (rect.x + 4, rect.h / 2);
-            for (index, pr) in prs.iter().enumerate() {
-                let is_selected  = index == self.selected_index;
-                let bg : termion::color::Bg<&dyn termion::color::Color> = if is_selected {
-                    termion::color::Bg(&termion::color::White)
-                } else {
-                    termion::color::Bg(&termion::color::Black)
-                };
-                let fg : termion::color::Fg<&dyn termion::color::Color> = if is_selected {
-                    termion::color::Fg(&termion::color::Black)
-                } else {
-                    termion::color::Fg(&termion::color::White)
-                };
-                write!(stdout, "{go}{bg}{fg}#{id}: {title}{no_bg}{no_fg}",
-                       go = termion::cursor::Goto(start_position.0, start_position.1),
-                       id = pr.number,
-                       title = pr.title,
-                       bg = bg,
-                       fg = fg,
-                       no_bg = termion::color::Bg(termion::color::Reset),
-                       no_fg = termion::color::Fg(termion::color::Reset),
-                       ).unwrap();
-                start_position.1 += 1;
-            }
-        }  
+    fn draw (&self, frame: &mut Frame<B>) {
 
-        stdout.flush().unwrap();
+        let prs = &self.prs.items;
+        let size = frame.size();
+        let box_height = if !prs.is_empty() { prs.len().min(6) as u16 + 2 } else { 3 };
+        let margins_size = (size.height - box_height) / 2;
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(
+                [
+                    Constraint::Length(margins_size),
+                    Constraint::Length(box_height),
+                    Constraint::Length(margins_size),
+                ]
+                .as_ref(),
+            )
+            .split(size);
+
+        let horizontal_percentage = 80;
+        let horizontal_margin_percentage = (100 - horizontal_percentage) / 2;
+        let popup_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                [
+                    Constraint::Percentage(horizontal_margin_percentage),
+                    Constraint::Percentage(horizontal_percentage),
+                    Constraint::Percentage(horizontal_margin_percentage),
+                ]
+                .as_ref(),
+            )
+            .split(popup_layout[1])[1];
+
+        let list_items : Vec<ListItem> = prs
+                .iter()
+                .map(|pr| ListItem::new(format!("#{} {}", pr.number, pr.title)))
+                .collect();
+
+        let list = List::new(list_items)
+            .block(Block::default().borders(Borders::ALL).title("Select pull request"))
+            .highlight_style(Style::default().add_modifier(Modifier::BOLD));
+
+        frame.render_stateful_widget(list, popup_layout, self.prs.state.borrow_mut().deref_mut());
     }
 }
 
 impl InteractableScreen for RepoSelectionScreen {
     fn validate_input(&self, input: Key) -> bool {
-        if self.prs.is_none() {
+        if self.prs.items.is_empty() {
             return false;
         }
 
@@ -105,38 +111,12 @@ impl InteractableScreen for RepoSelectionScreen {
         match input {
             Key::Char('j') => self.update_selection(1), 
             Key::Char('k') => self.update_selection(-1),
-            Key::Char('\n') => if let Some(repos) = &self.prs {
-                let chosen_repo = &repos[self.selected_index as usize];
-                self.event_sender.send(AppEvent::RepoChosen(chosen_repo.number)).unwrap();
-            },
+            Key::Char('\n') => 
+                if let Some(chosen_repo) = self.prs.get_selected() {
+                    self.event_sender.send(AppEvent::RepoChosen(chosen_repo.number)).unwrap();
+                },
             _ => (),
         }
     }
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
