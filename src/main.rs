@@ -13,8 +13,15 @@ use getopts::Occur;
 use app::App;
 use args::Args;
 use backend::gh::{self, GhClient};
-use termion::raw::IntoRawMode;
 use error::Error;
+
+use tui::backend::{Backend, CrosstermBackend};
+use tui::Terminal;
+
+use crossterm::{
+    execute,
+    terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+};
 
 #[derive(Debug)]
 struct RepoParams {
@@ -57,15 +64,25 @@ fn run(description: &Args) -> Result<(), Error> {
         Err(e) => return Err(e),
     }
 
-    let stdout = std::io::stdout();
-    let stdout = stdout.lock().into_raw_mode().unwrap();
-    let stdout = termion::screen::AlternateScreen::from(stdout);
+    enable_raw_mode()?;
+    let mut stdout = std::io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
 
     let repo_params = get_repo_params(&description);
     let gh_client = GhClient::new(repo_params.owner, repo_params.repo)?;
     gh_client.validate(repo_params.pr_num)?;
-    let app = App::new(stdout, gh_client);
-    app.run(repo_params.pr_num)
+    let app = App::new(&mut terminal, gh_client);
+    let res = app.run(repo_params.pr_num);
+
+    disable_raw_mode()?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+    )?;
+
+    res
 }
 
 fn get_repo_params(args: &Args) -> RepoParams {

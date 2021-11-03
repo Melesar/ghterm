@@ -4,8 +4,8 @@ use crate::app::events::AppEvent;
 use crate::backend::pr::PrConversation;
 use super::main_screen_handler::MainScreenEvent;
 use super::screen::*;
-
-use termion::cursor::Goto;
+use tui::backend::Backend;
+use tui::Frame;
 
 use std::sync::mpsc;
 use std::io::Write;
@@ -30,12 +30,12 @@ impl Display for MainScreenTab {
     }
 }
 
-impl DrawableScreen for MainScreenTab {
-    fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        match self {
+impl<B: Backend> DrawableScreen<B> for MainScreenTab {
+    fn draw(&self, frame: &mut Frame<B>) {
+        /*match self {
             MainScreenTab::Conversation(ct) => ct.draw(buffer, rect),
             _ => (),
-        }
+        }*/
     }
 }
 
@@ -91,9 +91,9 @@ impl MainScreen {
     }
 }
 
-impl DrawableScreen for MainScreen {
-    fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        let screen_rect = Rect {y: rect.y + 1, h: rect.h - 1, ..rect};
+impl<B: Backend> DrawableScreen<B> for MainScreen {
+    fn draw(&self, frame: &mut Frame<B>) {
+        /*let screen_rect = Rect {y: rect.y + 1, h: rect.h - 1, ..rect};
         let tab_screen = Screen::new(screen_rect);
 
         let mut title_offset : usize = 0;
@@ -111,7 +111,7 @@ impl DrawableScreen for MainScreen {
         }
 
         self.tabs[self.current_tab_index].draw(buffer, tab_screen.get_full_rect());
-        buffer.flush().unwrap();
+        buffer.flush().unwrap();*/
     }
 }
 

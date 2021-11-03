@@ -5,11 +5,12 @@ use crate::backend::task::*;
 use crate::backend::pr;
 use crate::backend::gh::*;
 use crate::error::Error;
+use tui::backend::Backend;
+use tui::Frame;
 
 use super::screen::{Rect, ApplicationScreen, DrawableScreen, InteractableScreen, ScreenHandler};
 use super::main_screen::MainScreen;
 
-use std::io::Write;
 use std::sync::mpsc;
 
 pub enum MainScreenEvent {
@@ -49,7 +50,7 @@ impl<'a> MainScreenHandler<'a> {
     }
 }
 
-impl<'a> ScreenHandler for MainScreenHandler<'a> {
+impl<'a, B: Backend> ScreenHandler<B> for MainScreenHandler<'a> {
     fn update(&mut self) {
         if let Some(evt) = self.screen_events_receiver.try_recv().ok() {
 
@@ -77,11 +78,10 @@ impl<'a> ScreenHandler for MainScreenHandler<'a> {
     }
 }
 
-impl<'a> DrawableScreen for MainScreenHandler<'a> {
-    fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        self.screen.draw(buffer, rect);
+impl<'a, B: Backend> DrawableScreen<B> for MainScreenHandler<'a> {
+    fn draw(&self, frame: &mut Frame<B>) {
+        self.screen.draw(frame);
     }
-
 }
 
 impl<'a> InteractableScreen for MainScreenHandler<'a> {
@@ -94,5 +94,5 @@ impl<'a> InteractableScreen for MainScreenHandler<'a> {
     }
 }
 
-impl<'a> ApplicationScreen for MainScreenHandler<'a> {
+impl<'a, B: Backend> ApplicationScreen<B> for MainScreenHandler<'a> {
 }

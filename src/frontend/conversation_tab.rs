@@ -3,7 +3,6 @@ mod conversation_draw;
 
 use std::rc::Rc;
 use crate::backend::diff::ChangeList;
-use std::io::Write;
 use std::sync::mpsc;
 
 use crate::backend::pr::PrConversation;
@@ -12,7 +11,8 @@ use super::main_screen_handler::MainScreenEvent;
 use super::screen::*;
 use conversation_tree::ConversationTree;
 use termion::event::Key;
-use termion::cursor::Goto;
+use tui::backend::Backend;
+use tui::Frame;
 
 pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
@@ -34,10 +34,10 @@ impl ConversationTab {
     }
 }
 
-impl DrawableScreen for ConversationTab {
+impl<B: Backend> DrawableScreen<B> for ConversationTab {
 
-    fn draw(&self, buffer: &mut dyn Write, rect: Rect) {
-        let mut left_part = rect.screen();
+    fn draw(&self, frame: &mut Frame<B>) {
+        /*let mut left_part = rect.screen();
         let mut right_part = left_part.split_vertically();
         let mut writer = left_part.get_content_rect().screen().get_writer();
 
@@ -49,7 +49,7 @@ impl DrawableScreen for ConversationTab {
         }
 
         left_part.draw_border(buffer);
-        right_part.draw_border(buffer);
+        right_part.draw_border(buffer);*/
     }
 }
 
@@ -81,5 +81,5 @@ impl InteractableScreen for ConversationTab {
     }
 }
 
-impl ApplicationScreen for ConversationTab {
+impl<B: Backend> ApplicationScreen<B> for ConversationTab {
 }

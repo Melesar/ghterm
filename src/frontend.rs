@@ -4,3 +4,4 @@ pub mod screen;
 pub mod main_screen;
 pub mod main_screen_handler;
 pub mod conversation_tab;
+mod util;

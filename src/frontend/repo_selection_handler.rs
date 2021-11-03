@@ -5,12 +5,13 @@ use crate::backend::gh::GhClient;
 use crate::error::Error;
 use json::JsonValue;
 use termion::event::Key;
+use tui::backend::Backend;
+use tui::Frame;
 
 use super::screen::*;
 use super::repo_selection::RepoSelectionScreen;
 
 use std::sync::mpsc;
-use std::io::Write;
 
 pub struct RepoSelectionHandler {
     screen: RepoSelectionScreen,
@@ -27,7 +28,7 @@ impl RepoSelectionHandler {
     }
 }
 
-impl ScreenHandler for RepoSelectionHandler  {
+impl<B: Backend> ScreenHandler<B> for RepoSelectionHandler {
     fn update(&mut self) {
         match self.task_handle.poll() {
             Some(ok) => match ok {
@@ -52,11 +53,11 @@ impl InteractableScreen for RepoSelectionHandler {
     }
 }
 
-impl  DrawableScreen  for RepoSelectionHandler  {
-    fn draw (&self, buffer: &mut dyn Write, rect: Rect) {
-        self.screen.draw(buffer, rect);
+impl<B: Backend> DrawableScreen<B>  for RepoSelectionHandler  {
+    fn draw (&self, frame: &mut Frame<B>) {
+        self.screen.draw(frame);
     }
 }
 
-impl  ApplicationScreen  for RepoSelectionHandler  {
+impl<B: Backend> ApplicationScreen<B>  for RepoSelectionHandler  {
 }

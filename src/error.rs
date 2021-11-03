@@ -1,5 +1,5 @@
 use std::fmt::Display;
-
+use std::convert::From;
 
 #[derive(Debug)]
 pub enum Error {
@@ -19,5 +19,11 @@ impl Display for Error {
             Error::NotARepo(repo) => write!(f, "{} is not a GitHub repository", repo),
             Error::PrDoesntExist(repo, pr) => write!(f, "Pull request #{} in {} doesn't exist", pr, repo),
         }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Error::Other(err.to_string())
     }
 }

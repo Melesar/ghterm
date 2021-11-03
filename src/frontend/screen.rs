@@ -2,6 +2,8 @@ use std::io::Write;
 use std::iter::FromIterator;
 use termion::cursor::Goto;
 use termion::event::Key;
+use tui::backend::Backend;
+use tui::Frame;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Rect {
@@ -17,8 +19,8 @@ impl Rect {
     }
 }
 
-pub trait DrawableScreen {
-    fn draw(&self, buffer: &mut dyn Write, rect: Rect);
+pub trait DrawableScreen<B: Backend>{
+    fn draw(&self, frame: &mut Frame<B>);
 }
 
 pub trait InteractableScreen {
@@ -26,10 +28,10 @@ pub trait InteractableScreen {
     fn process_input(&mut self, input: Key);
 }
 
-pub trait ApplicationScreen : DrawableScreen + InteractableScreen { 
+pub trait ApplicationScreen<B: Backend> : DrawableScreen<B> + InteractableScreen { 
 }
 
-pub trait ScreenHandler : ApplicationScreen {
+pub trait ScreenHandler<B: Backend> : ApplicationScreen<B> {
     fn update (&mut self);
 }
 
