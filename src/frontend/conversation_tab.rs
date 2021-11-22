@@ -1,61 +1,75 @@
 mod conversation_tree;
+mod conversation_tree_content;
+mod conversation_tree_state;
 mod conversation_draw;
 
 use std::rc::Rc;
-use crate::backend::diff::ChangeList;
 use std::sync::mpsc;
+use std::cell::RefCell;
+use std::ops::DerefMut;
 
 use crate::backend::pr::PrConversation;
+use crate::backend::diff::ChangeList;
 
+use super::screen::InteractableScreen;
 use super::main_screen_handler::MainScreenEvent;
-use super::screen::*;
-use conversation_tree::ConversationTree;
+
+use conversation_tree::{ConversationTree, Prefixes};
+use conversation_tree_content::ConversationTreeContent;
+use conversation_tree_state::ConversationTreeState;
+
 use termion::event::Key;
-use tui::backend::Backend;
-use tui::Frame;
+
+use tui::{
+    backend::Backend,
+    layout::{Rect, Layout, Alignment, Direction, Constraint},
+    widgets::{Block, Borders, BorderType},
+    style::{Style, Modifier},
+    Frame,
+};
 
 pub struct ConversationTab {
     screen_event_sender: mpsc::Sender<MainScreenEvent>,
-    conversation_tree: Option<ConversationTree>,
+    conversation_tree: RefCell<Option<ConversationTreeState>>,
     changelist: Option<Rc<ChangeList>>,
 }
 
 impl ConversationTab {
     pub fn new (screen_event_sender: mpsc::Sender<MainScreenEvent>) -> Self {
-        ConversationTab { screen_event_sender, conversation_tree: None, changelist: None }
+        ConversationTab { screen_event_sender, conversation_tree: RefCell::new(None), changelist: None }
     }
 
     pub fn set_conversation(&mut self, conversation: PrConversation) {
-        self.conversation_tree = Some(ConversationTree::new(conversation));
+        self.conversation_tree = RefCell::new(Some(ConversationTreeState::new(conversation)));
     }
 
     pub fn set_changelist(&mut self, changelist: Rc<ChangeList>) {
         self.changelist = Some(Rc::clone(&changelist));
     }
-}
 
-impl<B: Backend> DrawableScreen<B> for ConversationTab {
+    pub fn draw<B: Backend>(&self, frame: &mut Frame<B>, rect: Rect) {
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(vec![
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(2, 3)
+            ])
+            .split(rect);
 
-    fn draw(&self, frame: &mut Frame<B>) {
-        /*let mut left_part = rect.screen();
-        let mut right_part = left_part.split_vertically();
-        let mut writer = left_part.get_content_rect().screen().get_writer();
+        let tree_widget = ConversationTree::default()
+            .block(Block::default().borders(Borders::all()))
+            .prefixes(Prefixes::new("▶", "▼", "-"))
+            .highlighted_style(Style::default().add_modifier(Modifier::BOLD));
+        frame.render_stateful_widget(tree_widget, layout[0], self.conversation_tree.borrow_mut().deref_mut());
 
-        write!(buffer, "{}{}", termion::cursor::Goto(rect.x + 1, rect.y + 1), termion::clear::AfterCursor).unwrap();
-
-        if let Some(conversation_tree) = self.conversation_tree.as_ref() {
-            conversation_tree.draw_tree(buffer, &mut writer);
-            conversation_tree.draw_selected_item(buffer, &mut right_part, &self.changelist);
-        }
-
-        left_part.draw_border(buffer);
-        right_part.draw_border(buffer);*/
+        let content_widget = ConversationTreeContent::default();
+        frame.render_stateful_widget(content_widget, layout[1], self.conversation_tree.borrow_mut().deref_mut());
     }
 }
 
 impl InteractableScreen for ConversationTab {
     fn validate_input(&self, input: Key) -> bool {
-        self.conversation_tree.is_some() &&
+        self.conversation_tree.borrow().is_some() &&
             (input == Key::Char('j') || input == Key::Char('k') || input == Key::Char('h') || input == Key::Char('l') ||
              input == Key::Char(' '))
     }
@@ -72,14 +86,13 @@ impl InteractableScreen for ConversationTab {
             _ => 0,
         };
         
-        let tree = self.conversation_tree.as_mut().unwrap();
-        if input == Key::Char(' ') {
-            tree.toggle_expansion();
-        } else if vertical_offset != 0 {
-            tree.move_selection(vertical_offset > 0);
-        } 
+        let mut borrow = self.conversation_tree.borrow_mut();
+        (*borrow).as_mut().map(|t| {
+            if input == Key::Char(' ') {
+                t.toggle_expansion();
+            } else if vertical_offset != 0 {
+                t.move_selection(vertical_offset > 0);
+            } 
+        });
     }
-}
-
-impl<B: Backend> ApplicationScreen<B> for ConversationTab {
 }

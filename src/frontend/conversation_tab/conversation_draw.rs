@@ -1,11 +1,18 @@
 use crate::frontend::conversation_tab::ChangeList;
+use crate::frontend::conversation_tab::conversation_tree::Prefixes;
 use crate::frontend::screen::{ScreenWriter, Screen};
 use crate::backend::pr::*;
 use std::io::Write;
 use std::rc::Rc;
 
+use tui::{
+    layout::Rect,
+    buffer::Buffer,
+    style::Style,
+};
+
 pub trait TreeDraw {
-    fn draw(&self, buffer: &mut dyn Write, writer: &mut ScreenWriter, is_expanded: bool);
+    fn draw(&self, area: Rect, buffer: &mut Buffer, prefixes: Prefixes, style: Style, is_expanded: bool);
 }
 
 pub trait ContentDraw {
@@ -13,27 +20,25 @@ pub trait ContentDraw {
 }
 
 impl TreeDraw for PrReview {
-    fn draw(&self, buffer: &mut dyn Write, writer: &mut ScreenWriter, is_expanded: bool) {
+    fn draw(&self, area: Rect, buffer: &mut Buffer, prefixes: Prefixes, style: Style, is_expanded: bool) {
         let has_threads = !self.threads.is_empty();
-        let symbol = if has_threads && is_expanded { "▼" } else if has_threads { "▶" } else { " " };
+        let symbol = if has_threads && is_expanded { prefixes.expanded_symbol } else if has_threads { prefixes.collapsed_symbol } else { " " };
 
-        writer.write_line_truncated(buffer, &format!("{} {} {}", symbol, self.review_comment.author_name, self.verdict));
+        buffer.set_stringn(area.x, area.y, format!("{} {} {}", symbol, self.review_comment.author_name, self.verdict), area.width as usize, style);
     }
 }
 
 impl TreeDraw for PrComment {
-    fn draw(&self, buffer: &mut dyn Write, writer: &mut ScreenWriter, _: bool) {
-        writer.write_line_truncated(buffer, &self.body);
+    fn draw(&self, area: Rect, buffer: &mut Buffer, _: Prefixes, style: Style, _: bool) {
+        buffer.set_stringn(area.x, area.y, &self.body, area.width as usize, style);
     }
 }
 
 
 impl TreeDraw for PrConversationThread {
-    fn draw(&self, buffer: &mut dyn Write, writer: &mut ScreenWriter, _: bool) {
+    fn draw(&self, area: Rect, buffer: &mut Buffer, prefixes: Prefixes, style: Style, _: bool) {
         if let Some(comment) = self.comments.get(0) {
-            writer.set_indent(1);
-            writer.write_line_truncated(buffer, &format!("- {}", comment.body));
-            writer.set_indent(0);
+            buffer.set_stringn(area.x + 4, area.y, format!("{} {}", prefixes.comment_prefix, comment.body), (area.width - 4) as usize, style);
         }
     }
 }
