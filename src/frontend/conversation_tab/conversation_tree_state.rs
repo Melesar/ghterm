@@ -6,6 +6,12 @@ use crate::frontend::screen::{ScreenWriter, Screen};
 use super::conversation_draw::{TreeDraw, ContentDraw};
 use if_chain::if_chain;
 
+use tui::{
+    layout::Rect,
+    buffer::Buffer,
+    style::Style,
+};
+
 pub struct ConversationTreeState {
     pub conversation: PrConversation,
     pub nodes: Vec<ConversationTreeNode>,
@@ -120,9 +126,9 @@ impl ConversationTreeState {
         }
     }
 
-    pub fn draw_selected_item(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>) {
+    pub fn draw_selected_item(&self, area: Rect, buffer: &mut Buffer, style: Style, changelist: &Option<Rc<ChangeList>>) {
         if let Some(selected_node) = self.nodes.get(self.selected_node) {
-            self.get_content_draw(&selected_node.data).draw(buffer, screen, changelist);
+            self.get_content_draw(&selected_node.data).draw(area, buffer, style, changelist);
         }
     }
 

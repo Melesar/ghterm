@@ -1,14 +1,14 @@
 use crate::frontend::conversation_tab::ChangeList;
 use crate::frontend::conversation_tab::conversation_tree::Prefixes;
-use crate::frontend::screen::{ScreenWriter, Screen};
 use crate::backend::pr::*;
-use std::io::Write;
 use std::rc::Rc;
 
 use tui::{
-    layout::Rect,
+    layout::{Rect, Layout, Direction, Constraint},
     buffer::Buffer,
-    style::Style,
+    style::{Style, Modifier},
+    text::{Span, Spans},
+    widgets::{Widget, Paragraph, Block, Borders},
 };
 
 pub trait TreeDraw {
@@ -16,7 +16,7 @@ pub trait TreeDraw {
 }
 
 pub trait ContentDraw {
-    fn draw(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>);
+    fn draw(&self, area: Rect, buffer: &mut Buffer, style: Style, changelist: &Option<Rc<ChangeList>>);
 }
 
 impl TreeDraw for PrReview {
@@ -44,23 +44,58 @@ impl TreeDraw for PrConversationThread {
 }
 
 impl ContentDraw for PrReview {
-    fn draw(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>) {
-        let mut writer = screen.get_content_rect().screen().get_writer();
-        writer.write_line(buffer, &format!("{} {}", self.review_comment.author_name, self.verdict));
-        writer.write_line(buffer, &self.review_comment.body);
+    fn draw(&self, area: Rect, buffer: &mut Buffer, style: Style, _: &Option<Rc<ChangeList>>) {
+        let text = vec![
+            Spans::from(Span::raw(format!("{} {}", self.review_comment.author_name, self.verdict))),
+            Spans::from(Span::raw(&self.review_comment.body)),
+        ];
+        let paragraph = Paragraph::new(text)
+            .block(Block::default().borders(Borders::all()))
+            .style(style);
+        paragraph.render(area, buffer);
     }
 }
 
 impl ContentDraw for PrComment {
-    fn draw(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>) {
-        let mut writer = screen.get_content_rect().screen().get_writer();
-        writer.write_line(buffer, &self.body);
+    fn draw(&self, area: Rect, buffer: &mut Buffer, style: Style, _: &Option<Rc<ChangeList>>) {
+        let paragraph = Paragraph::new(self.body.as_str())
+            .style(style)
+            .block(Block::default().borders(Borders::all()));
+
+        paragraph.render(area, buffer);
     }
 }
 
 impl ContentDraw for PrConversationThread {
-    fn draw(&self, buffer: &mut dyn Write, screen: &mut Screen, changelist: &Option<Rc<ChangeList>>) {
+    fn draw(&self, area: Rect, buffer: &mut Buffer, style: Style, changelist: &Option<Rc<ChangeList>>) {
+        let mut threads_text = vec![];
+        for comment in self.comments.iter() {
+            threads_text.push(Spans::from(Span::styled(&comment.author_name, Style::default().add_modifier(Modifier::BOLD))));
+            threads_text.push(Spans::from(Span::raw(&comment.body)));
+            threads_text.push(Spans::from(Span::raw("")));
+        }
 
+        let paragraph = Paragraph::new(threads_text)
+            .block(Block::default().borders(Borders::all()));
+
+        if let Some(code_range) = &self.code_range {
+            let hunk = changelist.as_ref().map(|c| c.get_hunk(code_range));
+            let hunk_height = hunk.map_or(3, |h| std::cmp::min(h.lines().count() as u16, area.height / 2));
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Min(hunk_height), Constraint::Min(0)]);
+
+            let parts = layout.split(area);
+            if let Some(hunk) = hunk {
+                let diff_paragraph = Paragraph::new(hunk)
+                    .block(Block::default().borders(Borders::all()));
+                diff_paragraph.render(parts[0], buffer);
+            }
+            paragraph.render(parts[1], buffer);
+        } else {
+            paragraph.render(area, buffer);
+        }
+/*
         let mut thread_writer : ScreenWriter;
 
         if let Some(code_range) = &self.code_range {
@@ -84,6 +119,6 @@ impl ContentDraw for PrConversationThread {
             thread_writer.write_line(buffer, &comment.author_name);
             thread_writer.write_line(buffer, &comment.body);
             thread_writer.write_line(buffer, "");
-        }
+        }*/
     }
 }

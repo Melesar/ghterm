@@ -62,8 +62,12 @@ impl ConversationTab {
             .highlighted_style(Style::default().add_modifier(Modifier::BOLD));
         frame.render_stateful_widget(tree_widget, layout[0], self.conversation_tree.borrow_mut().deref_mut());
 
-        let content_widget = ConversationTreeContent::default();
-        frame.render_stateful_widget(content_widget, layout[1], self.conversation_tree.borrow_mut().deref_mut());
+        let state = self.conversation_tree.borrow();
+        let content_widget = ConversationTreeContent::default()
+            .block(Block::default().borders(Borders::all()))
+            .state(state.as_ref())
+            .changelist(self.changelist.as_ref().map(|rc| Rc::clone(rc)));
+        frame.render_widget(content_widget, layout[1]);
     }
 }
 
