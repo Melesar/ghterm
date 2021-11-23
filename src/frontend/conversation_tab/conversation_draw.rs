@@ -8,7 +8,7 @@ use tui::{
     buffer::Buffer,
     style::{Style, Modifier},
     text::{Span, Spans},
-    widgets::{Widget, Paragraph, Block, Borders},
+    widgets::{Widget, Paragraph, Wrap, Block, Borders},
 };
 
 pub trait TreeDraw {
@@ -80,14 +80,16 @@ impl ContentDraw for PrConversationThread {
 
         if let Some(code_range) = &self.code_range {
             let hunk = changelist.as_ref().map(|c| c.get_hunk(code_range));
-            let hunk_height = hunk.map_or(3, |h| std::cmp::min(h.lines().count() as u16, area.height / 2));
+            let hunk_height = hunk.map_or(3, |h| std::cmp::min(h.lines().count() as u16, area.height / 2) + 2);
+            let comments_height = area.height - hunk_height;
             let layout = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([Constraint::Min(hunk_height), Constraint::Min(0)]);
+                .constraints([Constraint::Length(hunk_height), Constraint::Length(comments_height)]);
 
             let parts = layout.split(area);
             if let Some(hunk) = hunk {
                 let diff_paragraph = Paragraph::new(hunk)
+                    .wrap(Wrap{ trim: false })
                     .block(Block::default().borders(Borders::all()));
                 diff_paragraph.render(parts[0], buffer);
             }
